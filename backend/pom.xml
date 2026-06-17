@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
     <groupId>com.aiplatform</groupId>
     <artifactId>ruoyi</artifactId>
-    <version>4.8.3</version>
+    <version>3.9.2</version>
 
     <name>ruoyi</name>
     <url>http://www.ruoyi.vip</url>
     <description>若依管理系统</description>
     
     <properties>
-        <ruoyi.version>4.8.3</ruoyi.version>
+        <ruoyi.version>3.9.2</ruoyi.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
-        <maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
         <spring-boot.version>4.0.6</spring-boot.version>
-        <shiro.version>2.2.0</shiro.version>
         <mybatis-spring-boot.version>4.0.1</mybatis-spring-boot.version>
-        <thymeleaf.extras.shiro.version>2.1.0</thymeleaf.extras.shiro.version>
         <druid.version>1.2.28</druid.version>
         <yauaa.version>8.1.1</yauaa.version>
         <kaptcha.version>2.3.3</kaptcha.version>
         <pagehelper.boot.version>4.1.0</pagehelper.boot.version>
-        <fastjson.version>1.2.83</fastjson.version>
+        <fastjson.version>2.0.62</fastjson.version>
         <oshi.version>7.3.0</oshi.version>
         <commons.io.version>2.22.0</commons.io.version>
         <poi.version>4.1.2</poi.version>
         <velocity.version>2.3</velocity.version>
+        <jwt.version>0.9.1</jwt.version>
+        <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.3</springdoc.version>
     </properties>
 
@@ -52,64 +52,6 @@
                 <artifactId>druid-spring-boot-4-starter</artifactId>
                 <version>${druid.version}</version>
             </dependency>
-            
-            <!-- 验证码 -->
-            <dependency>
-                <groupId>pro.fessional</groupId>
-                <artifactId>kaptcha</artifactId>
-                <version>${kaptcha.version}</version>
-            </dependency>
-
-            <!-- Shiro核心框架 -->
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-core</artifactId>
-                <classifier>jakarta</classifier>
-                <version>${shiro.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-web</artifactId>
-                <classifier>jakarta</classifier>
-                <version>${shiro.version}</version>
-            </dependency>
-
-            <!-- Shiro使用Spring框架 -->
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-spring</artifactId>
-                <classifier>jakarta</classifier>
-                <version>${shiro.version}</version>
-                <!-- 排除仍使用了javax.servlet的依赖 -->
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.apache.shiro</groupId>
-                        <artifactId>shiro-web</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <!-- Shiro使用EhCache缓存框架 -->
-            <dependency>
-                <groupId>org.apache.shiro</groupId>
-                <artifactId>shiro-ehcache</artifactId>
-                <version>${shiro.version}</version>
-            </dependency>
-
-            <!-- thymeleaf模板引擎和shiro框架的整合 -->
-            <dependency>
-                <groupId>com.github.theborakompanioni</groupId>
-                <artifactId>thymeleaf-extras-shiro</artifactId>
-                <version>${thymeleaf.extras.shiro.version}</version>
-            </dependency>
-
-            <!-- mybatis依赖 -->
-            <dependency>
-                <groupId>org.mybatis.spring.boot</groupId>
-                <artifactId>mybatis-spring-boot-starter</artifactId>
-                <version>${mybatis-spring-boot.version}</version>
-            </dependency>
 
             <!-- 解析客户端操作系统、浏览器等 -->
             <dependency>
@@ -123,6 +65,18 @@
                 <groupId>com.github.pagehelper</groupId>
                 <artifactId>pagehelper-spring-boot-starter</artifactId>
                 <version>${pagehelper.boot.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis-spring-boot.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb-api.version}</version>
             </dependency>
 
             <!-- 获取系统信息 -->
@@ -162,9 +116,23 @@
 
             <!-- 阿里JSON解析器 -->
             <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
                 <version>${fastjson.version}</version>
+            </dependency>
+
+            <!-- Token生成与解析-->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt</artifactId>
+                <version>${jwt.version}</version>
+            </dependency>
+
+            <!-- 验证码 -->
+            <dependency>
+                <groupId>pro.fessional</groupId>
+                <artifactId>kaptcha</artifactId>
+                <version>${kaptcha.version}</version>
             </dependency>
 
             <!-- 定时任务-->
@@ -206,19 +174,14 @@
     </dependencyManagement>
 
     <modules>
-        <module>app-admin</module>
-        <module>app-framework</module>
-        <module>app-system</module>
-        <module>app-quartz</module>
-        <module>app-generator</module>
-        <module>app-common</module>
+        <module>ruoyi-admin</module>
+        <module>ruoyi-framework</module>
+        <module>ruoyi-system</module>
+        <module>ruoyi-quartz</module>
+        <module>ruoyi-generator</module>
+        <module>ruoyi-common</module>
     </modules>
     <packaging>pom</packaging>
-
-
-    <dependencies>
-
-    </dependencies>
 
     <build>
         <plugins>

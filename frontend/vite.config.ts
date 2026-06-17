@@ -50,7 +50,14 @@ export default defineConfig(({ mode, command }) => {
         '/dev-api': {
           target: baseUrl,
           changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/dev-api/, '')
+          rewrite: (p) => p.replace(/^\/dev-api/, ''),
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes) => {
+              if (proxyRes.headers['location']) {
+                proxyRes.headers['location'] = proxyRes.headers['location'].replace(baseUrl, '/dev-api')
+              }
+            })
+          }
         },
          // springdoc proxy
          '^/v3/api-docs/(.*)': {
