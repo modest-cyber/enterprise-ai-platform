@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>ruoyi</artifactId>
-        <groupId>com.ruoyi</groupId>
+        <groupId>com.aiplatform</groupId>
         <version>4.8.3</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -81,7 +81,7 @@
 
         <!-- 系统模块-->
         <dependency>
-            <groupId>com.ruoyi</groupId>
+            <groupId>com.aiplatform</groupId>
             <artifactId>ruoyi-system</artifactId>
         </dependency>
 

@@ -52,5 +52,11 @@
   },
   "resolutions": {
     "quill": "2.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "vue-demi"
+    ]
   }
 }
