@@ -4,14 +4,13 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.shiro.web.filter.AccessControlFilter;
-import com.google.code.kaptcha.Constants;
 import com.aiplatform.common.constant.ShiroConstants;
-import com.aiplatform.common.utils.ShiroUtils;
+import com.aiplatform.common.utils.CacheUtils;
 import com.aiplatform.common.utils.StringUtils;
 
 /**
  * 验证码过滤器
- * 
+ *
  * @author ruoyi
  */
 public class CaptchaValidateFilter extends AccessControlFilter
@@ -54,15 +53,22 @@ public class CaptchaValidateFilter extends AccessControlFilter
         {
             return true;
         }
-        return validateResponse(httpServletRequest, httpServletRequest.getParameter(ShiroConstants.CURRENT_VALIDATECODE));
+        // 前端提交: code=用户输入验证码, uuid=缓存key
+        String validateCode = httpServletRequest.getParameter("code");
+        String uuid = httpServletRequest.getParameter("uuid");
+        return validateResponse(uuid, validateCode);
     }
 
-    public boolean validateResponse(HttpServletRequest request, String validateCode)
+    public boolean validateResponse(String uuid, String validateCode)
     {
-        Object obj = ShiroUtils.getSession().getAttribute(Constants.KAPTCHA_SESSION_KEY);
+        if (StringUtils.isEmpty(uuid))
+        {
+            return false;
+        }
+        Object obj = CacheUtils.get("captchaCache", uuid);
         String code = String.valueOf(obj != null ? obj : "");
-        // 验证码清除，防止多次使用。
-        request.getSession().removeAttribute(Constants.KAPTCHA_SESSION_KEY);
+        // 验证码清除，防止多次使用
+        CacheUtils.remove("captchaCache", uuid);
         if (StringUtils.isEmpty(validateCode) || !validateCode.equalsIgnoreCase(code))
         {
             return false;

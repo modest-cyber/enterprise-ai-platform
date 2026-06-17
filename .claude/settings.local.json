@@ -4,7 +4,12 @@
       "Bash(mysql:*)",
       "Bash(pnpm --version)",
       "Bash(npm --version)",
-      "Bash(pnpm approve-builds:*)"
+      "Bash(pnpm approve-builds:*)",
+      "Bash(curl:*)",
+      "Bash(mvn -v)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist)",
+      "Bash(pnpm dev:*)"
     ]
   }
 }

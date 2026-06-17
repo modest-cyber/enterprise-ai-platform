@@ -3,12 +3,10 @@ package com.aiplatform.framework.shiro.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.aiplatform.common.constant.Constants;
-import com.aiplatform.common.constant.ShiroConstants;
 import com.aiplatform.common.constant.UserConstants;
 import com.aiplatform.common.core.domain.entity.SysUser;
 import com.aiplatform.common.utils.DateUtils;
 import com.aiplatform.common.utils.MessageUtils;
-import com.aiplatform.common.utils.ServletUtils;
 import com.aiplatform.common.utils.ShiroUtils;
 import com.aiplatform.common.utils.StringUtils;
 import com.aiplatform.framework.manager.AsyncManager;
@@ -36,11 +34,7 @@ public class SysRegisterService
     {
         String msg = "", loginName = user.getLoginName(), password = user.getPassword();
 
-        if (ShiroConstants.CAPTCHA_ERROR.equals(ServletUtils.getRequest().getAttribute(ShiroConstants.CURRENT_CAPTCHA)))
-        {
-            msg = "验证码错误";
-        }
-        else if (StringUtils.isEmpty(loginName))
+        if (StringUtils.isEmpty(loginName))
         {
             msg = "用户名不能为空";
         }

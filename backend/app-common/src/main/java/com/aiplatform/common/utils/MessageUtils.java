@@ -21,6 +21,13 @@ public class MessageUtils
     public static String message(String code, Object... args)
     {
         MessageSource messageSource = SpringUtils.getBean(MessageSource.class);
-        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+        try
+        {
+            return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+        }
+        catch (Exception e)
+        {
+            return code;
+        }
     }
 }

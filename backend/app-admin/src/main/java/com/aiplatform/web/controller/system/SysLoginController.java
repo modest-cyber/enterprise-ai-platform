@@ -1,5 +1,7 @@
 package com.aiplatform.web.controller.system;
 
+import java.util.Map;
+import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.shiro.SecurityUtils;
@@ -12,17 +14,24 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.aiplatform.common.core.controller.BaseController;
 import com.aiplatform.common.core.domain.AjaxResult;
+import com.aiplatform.common.core.domain.entity.SysUser;
 import com.aiplatform.common.core.text.Convert;
+import com.aiplatform.common.utils.CacheUtils;
 import com.aiplatform.common.utils.ServletUtils;
+import com.aiplatform.common.utils.ShiroUtils;
 import com.aiplatform.common.utils.StringUtils;
 import com.aiplatform.framework.web.service.ConfigService;
+import com.aiplatform.framework.web.service.PermissionService;
+import com.aiplatform.system.service.ISysMenuService;
+import com.aiplatform.system.service.ISysRoleService;
 
 /**
  * 登录验证
- * 
+ *
  * @author ruoyi
  */
 @Controller
@@ -34,8 +43,17 @@ public class SysLoginController extends BaseController
     @Value("${shiro.rememberMe.enabled: false}")
     private boolean rememberMe;
 
+    @Value("${shiro.user.captchaEnabled}")
+    private boolean captchaEnabled;
+
     @Autowired
     private ConfigService configService;
+
+    @Autowired
+    private ISysMenuService menuService;
+
+    @Autowired
+    private ISysRoleService roleService;
 
     @GetMapping("/login")
     public String login(HttpServletRequest request, HttpServletResponse response, ModelMap mmap)
@@ -54,8 +72,28 @@ public class SysLoginController extends BaseController
 
     @PostMapping("/login")
     @ResponseBody
-    public AjaxResult ajaxLogin(String username, String password, Boolean rememberMe)
+    public AjaxResult ajaxLogin(@RequestBody Map<String, Object> params)
     {
+        // 验证码校验
+        if (captchaEnabled)
+        {
+            String code = Convert.toStr(params.get("code"), "");
+            String uuid = Convert.toStr(params.get("uuid"), "");
+            if (StringUtils.isEmpty(uuid))
+            {
+                return error("验证码已失效");
+            }
+            String captcha = Convert.toStr(CacheUtils.get("captchaCache", uuid), "");
+            CacheUtils.remove("captchaCache", uuid);
+            if (StringUtils.isEmpty(code) || !code.equalsIgnoreCase(captcha))
+            {
+                return error("验证码错误");
+            }
+        }
+
+        String username = Convert.toStr(params.get("username"), "");
+        String password = Convert.toStr(params.get("password"), "");
+        Boolean rememberMe = Convert.toBool(params.get("rememberMe"), false);
         UsernamePasswordToken token = new UsernamePasswordToken(username, password, rememberMe);
         Subject subject = SecurityUtils.getSubject();
         try
@@ -72,6 +110,18 @@ public class SysLoginController extends BaseController
             }
             return error(msg);
         }
+    }
+
+    @GetMapping("/getInfo")
+    @ResponseBody
+    public AjaxResult getInfo()
+    {
+        SysUser user = ShiroUtils.getSysUser();
+        AjaxResult ajax = AjaxResult.success();
+        ajax.put("user", user);
+        ajax.put("roles", roleService.selectRoleKeys(user.getUserId()));
+        ajax.put("permissions", menuService.selectPermsByUserId(user.getUserId()));
+        return ajax;
     }
 
     @GetMapping("/unauth")
