@@ -1,0 +1,85 @@
+######################################################################
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+######################################################################
+# IDE & Editor
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.factorypath
+.settings/
+.springBeans
+.apt_generated
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+######################################################################
+# Java (backend/)
+target/
+*.class
+*.jar
+*.war
+!gradle/wrapper/gradle-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+*.xml.versionsBackup
+
+######################################################################
+# Node.js (frontend/ & agent-service/)
+node_modules/
+dist/
+dist-ssr/
+.next/
+*.local
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Keep lock files for reproducible builds
+# (pnpm-lock.yaml is committed by design)
+
+######################################################################
+# Python (future AI service)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.eggs/
+*.egg
+
+######################################################################
+# Environment & Secrets (root level only)
+/.env
+/.env.*
+!/.env.example
+
+# Secrets anywhere
+*secret*
+*credentials*
+*private_key*
+
+######################################################################
+# LangGraph
+.langgraph_api
+
+######################################################################
+# Misc
+*.tmp
+*.bak
+.cache/
