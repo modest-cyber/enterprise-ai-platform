@@ -13,15 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 /**
  * Agent 管理服务实现
  * <p>
  * 负责 Agent 配置的 CRUD 管理，以及通过 AgentClient 调用 Python Agent 执行任务。
- * 当前阶段异步任务的管理（submitTask/getTaskStatus/cancelTask）为简化实现，
- * M7 阶段对接真实的任务队列后完善。
+ * 基础入参非空校验由 Controller 层 DTO + @Valid 完成，Service 只保留业务规则。
+ * 当前阶段异步任务的管理为简化实现，M7 阶段对接真实的任务队列后完善。
  *
  * @author aiplatform
  */
@@ -40,17 +38,11 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public AgentConfig selectAgentById(Long agentId) {
-        if (agentId == null) {
-            throw new ServiceException("Agent ID不能为空");
-        }
         return agentConfigMapper.selectAgentById(agentId);
     }
 
     @Override
     public AgentConfig selectAgentByName(String agentName) {
-        if (!StringUtils.hasText(agentName)) {
-            throw new ServiceException("Agent名称不能为空");
-        }
         return agentConfigMapper.selectAgentByName(agentName);
     }
 
@@ -63,13 +55,7 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public int insertAgent(AgentConfig agent) {
-        if (agent == null) {
-            throw new ServiceException("Agent配置不能为空");
-        }
-        if (!StringUtils.hasText(agent.getAgentName())) {
-            throw new ServiceException("Agent名称不能为空");
-        }
-        // 名称唯一性校验
+        // 名称唯一性校验（业务规则）
         AgentConfig exist = agentConfigMapper.selectAgentByName(agent.getAgentName());
         if (exist != null) {
             throw new ServiceException("Agent名称已存在: " + agent.getAgentName());
@@ -80,10 +66,7 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public int updateAgent(AgentConfig agent) {
-        if (agent == null || agent.getAgentId() == null) {
-            throw new ServiceException("Agent ID不能为空");
-        }
-        // 名称唯一性校验（排除自身）
+        // 名称唯一性校验（业务规则，排除自身）
         AgentConfig exist = agentConfigMapper.selectAgentByName(agent.getAgentName());
         if (exist != null && !exist.getAgentId().equals(agent.getAgentId())) {
             throw new ServiceException("Agent名称已存在: " + agent.getAgentName());
@@ -94,9 +77,6 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public int deleteAgentByIds(Long[] agentIds) {
-        if (agentIds == null || agentIds.length == 0) {
-            throw new ServiceException("待删除的Agent ID列表不能为空");
-        }
         return agentConfigMapper.deleteAgentByIds(agentIds);
     }
 
@@ -104,16 +84,11 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public String executeSync(Long agentId, String task, String input) {
-        if (agentId == null) {
-            throw new ServiceException("Agent ID不能为空");
-        }
-        if (!StringUtils.hasText(task)) {
-            throw new ServiceException("任务描述不能为空");
-        }
         AgentConfig agent = agentConfigMapper.selectAgentById(agentId);
         if (agent == null) {
             throw new ServiceException("Agent不存在, agentId=" + agentId);
         }
+        // 业务规则：停用的 Agent 不允许执行
         if (agent.getStatus() != null && agent.getStatus() == 0) {
             throw new ServiceException("Agent已停用, agentName=" + agent.getAgentName());
         }
@@ -123,16 +98,11 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public String submitTask(Long agentId, String task, String input) {
-        if (agentId == null) {
-            throw new ServiceException("Agent ID不能为空");
-        }
-        if (!StringUtils.hasText(task)) {
-            throw new ServiceException("任务描述不能为空");
-        }
         AgentConfig agent = agentConfigMapper.selectAgentById(agentId);
         if (agent == null) {
             throw new ServiceException("Agent不存在, agentId=" + agentId);
         }
+        // 业务规则：停用的 Agent 不允许执行
         if (agent.getStatus() != null && agent.getStatus() == 0) {
             throw new ServiceException("Agent已停用, agentName=" + agent.getAgentName());
         }
@@ -156,11 +126,7 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public String getTaskStatus(String taskId) {
-        if (!StringUtils.hasText(taskId)) {
-            throw new ServiceException("任务ID不能为空");
-        }
         // 当前阶段由 AgentClient 查询 Python Agent 端任务状态
-        // M7 对接后改为查询本地任务队列表
         String status = agentClient.getTaskStatus(taskId);
         if (status == null) {
             return "{\"taskId\":\"" + taskId + "\",\"status\":\"unknown\",\"message\":\"任务状态查询暂不支持(Mock)\"}";
@@ -170,9 +136,6 @@ public class AgentServiceImpl implements IAgentService {
 
     @Override
     public boolean cancelTask(String taskId) {
-        if (!StringUtils.hasText(taskId)) {
-            throw new ServiceException("任务ID不能为空");
-        }
         // 当前阶段为简化实现（M7 对接真实任务取消逻辑）
         log.info("取消任务请求, taskId={} (当前为Mock实现)", taskId);
         return true;

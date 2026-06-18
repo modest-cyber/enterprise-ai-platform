@@ -18,14 +18,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * 模型配置服务实现 —— 管理 LLM 模型配置 CRUD
  * <p>
  * 支持多 Provider（OpenAI/DeepSeek/Qwen/Ollama），多模型类型（chat/embedding/rerank）。
  * 通过 is_default 字段标识默认模型，系统同时只有一个默认模型。
- * ApiKey 以加密形式存储，testConnection() 用于验证模型连通性。
+ * 基础入参非空校验由 Controller 层 DTO + @Valid 完成，Service 只保留业务规则。
  *
  * @author aiplatform
  */
@@ -45,9 +44,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
 
     @Override
     public AiModel selectModelById(Long modelId) {
-        if (modelId == null) {
-            throw new ServiceException("模型ID不能为空");
-        }
         return aiModelMapper.selectModelById(modelId);
     }
 
@@ -70,30 +66,18 @@ public class ModelConfigServiceImpl implements IModelConfigService {
 
     @Override
     public int insertModel(AiModel model) {
-        if (model == null || !StringUtils.hasText(model.getModelName())) {
-            throw new ServiceException("模型名称不能为空");
-        }
-        if (!StringUtils.hasText(model.getApiKey())) {
-            throw new ServiceException("API Key不能为空");
-        }
         model.setCreateBy(SecurityUtils.getUsername());
         return aiModelMapper.insertModel(model);
     }
 
     @Override
     public int updateModel(AiModel model) {
-        if (model == null || model.getModelId() == null) {
-            throw new ServiceException("模型ID不能为空");
-        }
         model.setUpdateBy(SecurityUtils.getUsername());
         return aiModelMapper.updateModel(model);
     }
 
     @Override
     public int deleteModelByIds(Long[] modelIds) {
-        if (modelIds == null || modelIds.length == 0) {
-            throw new ServiceException("待删除的模型ID列表不能为空");
-        }
         return aiModelMapper.deleteModelByIds(modelIds);
     }
 
@@ -101,9 +85,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
 
     @Override
     public boolean testConnection(Long modelId) {
-        if (modelId == null) {
-            throw new ServiceException("模型ID不能为空");
-        }
         AiModel model = aiModelMapper.selectModelById(modelId);
         if (model == null) {
             throw new ServiceException("模型不存在, modelId=" + modelId);
@@ -111,7 +92,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
         log.info("测试模型连通性, modelId={}, modelName={}, provider={}", modelId, model.getModelName(), model.getProvider());
 
         try {
-            // 构建 ping 请求体
             String body = "{\"model\":\"" + escapeJson(model.getModelName()) + "\","
                     + "\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],"
                     + "\"max_tokens\":1}";
@@ -143,9 +123,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int setDefaultModel(Long modelId) {
-        if (modelId == null) {
-            throw new ServiceException("模型ID不能为空");
-        }
         AiModel model = aiModelMapper.selectModelById(modelId);
         if (model == null) {
             throw new ServiceException("模型不存在, modelId=" + modelId);
@@ -164,9 +141,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
         return rows;
     }
 
-    /**
-     * JSON 字符串转义（防止内容中的特殊字符破坏 JSON 结构）
-     */
     private String escapeJson(String s) {
         if (s == null) {
             return "";
