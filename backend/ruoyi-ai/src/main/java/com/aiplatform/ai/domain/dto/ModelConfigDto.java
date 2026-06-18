@@ -1,4 +1,4 @@
-package com.aiplatform.ai.dto;
+package com.aiplatform.ai.domain.dto;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

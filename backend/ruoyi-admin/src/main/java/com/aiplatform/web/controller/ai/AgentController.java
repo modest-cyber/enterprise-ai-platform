@@ -1,9 +1,9 @@
-package com.aiplatform.ai.controller;
+package com.aiplatform.web.controller.ai;
 
 import java.util.List;
 
 import com.aiplatform.ai.domain.AgentConfig;
-import com.aiplatform.ai.dto.AgentExecuteDto;
+import com.aiplatform.ai.domain.dto.AgentExecuteDto;
 import com.aiplatform.ai.service.IAgentService;
 import com.aiplatform.common.annotation.Log;
 import com.aiplatform.common.core.controller.BaseController;

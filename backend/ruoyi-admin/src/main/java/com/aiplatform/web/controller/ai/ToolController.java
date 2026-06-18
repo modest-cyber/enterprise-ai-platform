@@ -1,4 +1,4 @@
-package com.aiplatform.ai.controller;
+package com.aiplatform.web.controller.ai;
 
 import java.util.List;
 

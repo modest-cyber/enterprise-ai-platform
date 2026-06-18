@@ -1,9 +1,9 @@
-package com.aiplatform.ai.controller;
+package com.aiplatform.web.controller.ai;
 
 import java.util.List;
 
 import com.aiplatform.ai.domain.AiModel;
-import com.aiplatform.ai.dto.ModelConfigDto;
+import com.aiplatform.ai.domain.dto.ModelConfigDto;
 import com.aiplatform.ai.service.IModelConfigService;
 import com.aiplatform.common.annotation.Log;
 import com.aiplatform.common.core.controller.BaseController;
