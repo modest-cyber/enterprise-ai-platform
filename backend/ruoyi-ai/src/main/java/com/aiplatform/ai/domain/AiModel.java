@@ -1,149 +1,73 @@
 package com.aiplatform.ai.domain;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.aiplatform.common.core.domain.BaseEntity;
 
 /**
  * AI模型配置表 ai_model
+ * <p>
+ * 管理所有LLM模型配置，支持多Provider（OpenAI/DeepSeek/Qwen/Ollama）和多模型类型（chat/embedding/rerank）。
+ * 每个模型包含API Key、Base URL、温度等参数。系统同时只能有一个默认模型（is_default=1）。
+ * 模型配置由ModelConfigService统一管理，ChatService和AgentService通过默认模型调用LLM。
  *
  * @author aiplatform
  */
-public class AiModel extends BaseEntity
-{
+@Getter
+@Setter
+public class AiModel extends BaseEntity {
+
     private static final long serialVersionUID = 1L;
 
+    /** 模型主键 */
     private Long modelId;
 
+    /** 模型名称（API调用标识，如deepseek-chat） */
+    @NotBlank(message = "模型名称不能为空")
+    @Size(max = 100, message = "模型名称长度不能超过100个字符")
     private String modelName;
 
+    /** 展示名称（前端显示，如DeepSeek-V3） */
+    @NotBlank(message = "展示名称不能为空")
+    @Size(max = 200, message = "展示名称长度不能超过200个字符")
     private String displayName;
 
+    /** Provider：openai/deepseek/qwen/ollama */
+    @NotBlank(message = "Provider不能为空")
+    @Size(max = 50, message = "Provider长度不能超过50个字符")
     private String provider;
 
+    /** API Key（加密存储，用于调用LLM API鉴权） */
+    @NotBlank(message = "API Key不能为空")
+    @Size(max = 500, message = "API Key长度不能超过500个字符")
     private String apiKey;
 
+    /** API Base URL（LLM服务端点完整地址） */
+    @NotBlank(message = "Base URL不能为空")
+    @Size(max = 300, message = "Base URL长度不能超过300个字符")
     private String baseUrl;
 
+    /** 模型类型：chat-对话/embedding-向量化/rerank-重排序 */
+    @Size(max = 30, message = "模型类型长度不能超过30个字符")
     private String modelType;
 
+    /** 最大输出Token数 */
+    @Positive(message = "最大Token数必须大于0")
     private Integer maxTokens;
 
+    /** 默认温度参数（0-2） */
     private Double temperature;
 
+    /** 是否默认模型：0-否，1-是（系统同时只有一个is_default=1） */
     private Integer isDefault;
 
+    /** 是否启用：1-是，0-否 */
     private Integer isEnabled;
-
-    public Long getModelId()
-    {
-        return modelId;
-    }
-
-    public void setModelId(Long modelId)
-    {
-        this.modelId = modelId;
-    }
-
-    public String getModelName()
-    {
-        return modelName;
-    }
-
-    public void setModelName(String modelName)
-    {
-        this.modelName = modelName;
-    }
-
-    public String getDisplayName()
-    {
-        return displayName;
-    }
-
-    public void setDisplayName(String displayName)
-    {
-        this.displayName = displayName;
-    }
-
-    public String getProvider()
-    {
-        return provider;
-    }
-
-    public void setProvider(String provider)
-    {
-        this.provider = provider;
-    }
-
-    public String getApiKey()
-    {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey)
-    {
-        this.apiKey = apiKey;
-    }
-
-    public String getBaseUrl()
-    {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl)
-    {
-        this.baseUrl = baseUrl;
-    }
-
-    public String getModelType()
-    {
-        return modelType;
-    }
-
-    public void setModelType(String modelType)
-    {
-        this.modelType = modelType;
-    }
-
-    public Integer getMaxTokens()
-    {
-        return maxTokens;
-    }
-
-    public void setMaxTokens(Integer maxTokens)
-    {
-        this.maxTokens = maxTokens;
-    }
-
-    public Double getTemperature()
-    {
-        return temperature;
-    }
-
-    public void setTemperature(Double temperature)
-    {
-        this.temperature = temperature;
-    }
-
-    public Integer getIsDefault()
-    {
-        return isDefault;
-    }
-
-    public void setIsDefault(Integer isDefault)
-    {
-        this.isDefault = isDefault;
-    }
-
-    public Integer getIsEnabled()
-    {
-        return isEnabled;
-    }
-
-    public void setIsEnabled(Integer isEnabled)
-    {
-        this.isEnabled = isEnabled;
-    }
 
     @Override
     public String toString() {

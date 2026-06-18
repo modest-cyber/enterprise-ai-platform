@@ -1,77 +1,45 @@
 package com.aiplatform.ai.domain;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.aiplatform.common.core.domain.BaseEntity;
 
 /**
  * AI会话表 ai_conversation
+ * <p>
+ * 记录每次AI对话的会话信息，包含会话标题、Agent类型等元数据。
+ * 一个会话包含多条消息（ai_message），会话标题由首条消息自动截取。
  *
  * @author aiplatform
  */
-public class AiConversation extends BaseEntity
-{
+@Getter
+@Setter
+public class AiConversation extends BaseEntity {
+
     private static final long serialVersionUID = 1L;
 
+    /** 会话主键 */
     private Long conversationId;
 
+    /** 用户ID（关联 sys_user.user_id） */
+    @NotNull(message = "用户ID不能为空")
     private Long userId;
 
+    /** 会话标题（自动截取首条消息前30字） */
+    @Size(max = 200, message = "会话标题长度不能超过200个字符")
     private String title;
 
+    /** Agent类型：planner-规划/rag-知识检索/code-代码生成/review-代码审查 */
+    @Size(max = 50, message = "Agent类型长度不能超过50个字符")
     private String agentType;
 
+    /** 状态：1-进行中，0-已归档 */
     private Integer status;
-
-    public Long getConversationId()
-    {
-        return conversationId;
-    }
-
-    public void setConversationId(Long conversationId)
-    {
-        this.conversationId = conversationId;
-    }
-
-    public Long getUserId()
-    {
-        return userId;
-    }
-
-    public void setUserId(Long userId)
-    {
-        this.userId = userId;
-    }
-
-    public String getTitle()
-    {
-        return title;
-    }
-
-    public void setTitle(String title)
-    {
-        this.title = title;
-    }
-
-    public String getAgentType()
-    {
-        return agentType;
-    }
-
-    public void setAgentType(String agentType)
-    {
-        this.agentType = agentType;
-    }
-
-    public Integer getStatus()
-    {
-        return status;
-    }
-
-    public void setStatus(Integer status)
-    {
-        this.status = status;
-    }
 
     @Override
     public String toString() {
