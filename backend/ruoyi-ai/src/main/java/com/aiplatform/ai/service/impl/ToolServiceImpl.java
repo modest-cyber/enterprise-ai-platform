@@ -19,15 +19,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * MCP 工具管理服务实现
  * <p>
  * 负责 MCP 工具的注册、配置管理和调用执行。
+ * 基础入参非空校验由 Controller 层 DTO + @Valid 完成，Service 只保留业务规则。
  * invokeTool() 当前为 Mock 实现，M7 阶段对接 McpToolExecutor 实现真实工具调用。
- * testConnection() 对有 serverUrl 的工具发送 HTTP GET 验证连通性。
  *
  * @author aiplatform
  */
@@ -49,17 +48,11 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public AiTool selectToolById(Long toolId) {
-        if (toolId == null) {
-            throw new ServiceException("工具ID不能为空");
-        }
         return aiToolMapper.selectToolById(toolId);
     }
 
     @Override
     public AiTool selectToolByName(String toolName) {
-        if (!StringUtils.hasText(toolName)) {
-            throw new ServiceException("工具名称不能为空");
-        }
         return aiToolMapper.selectToolByName(toolName);
     }
 
@@ -77,13 +70,7 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public int insertTool(AiTool tool) {
-        if (tool == null) {
-            throw new ServiceException("工具配置不能为空");
-        }
-        if (!StringUtils.hasText(tool.getToolName())) {
-            throw new ServiceException("工具名称不能为空");
-        }
-        // 名称唯一性校验
+        // 名称唯一性校验（业务规则）
         AiTool exist = aiToolMapper.selectToolByName(tool.getToolName());
         if (exist != null) {
             throw new ServiceException("工具名称已存在: " + tool.getToolName());
@@ -94,10 +81,7 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public int updateTool(AiTool tool) {
-        if (tool == null || tool.getToolId() == null) {
-            throw new ServiceException("工具ID不能为空");
-        }
-        // 名称唯一性校验（排除自身）
+        // 名称唯一性校验（业务规则，排除自身）
         AiTool exist = aiToolMapper.selectToolByName(tool.getToolName());
         if (exist != null && !exist.getToolId().equals(tool.getToolId())) {
             throw new ServiceException("工具名称已存在: " + tool.getToolName());
@@ -108,9 +92,6 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public int deleteToolByIds(Long[] toolIds) {
-        if (toolIds == null || toolIds.length == 0) {
-            throw new ServiceException("待删除的工具ID列表不能为空");
-        }
         return aiToolMapper.deleteToolByIds(toolIds);
     }
 
@@ -118,18 +99,16 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public String invokeTool(Long toolId, String params) {
-        if (toolId == null) {
-            throw new ServiceException("工具ID不能为空");
-        }
         AiTool tool = aiToolMapper.selectToolById(toolId);
         if (tool == null) {
             throw new ServiceException("工具不存在, toolId=" + toolId);
         }
+        // 业务规则：停用的工具不允许调用
         if (tool.getIsEnabled() == null || tool.getIsEnabled() == 0) {
             throw new ServiceException("工具已停用, toolName=" + tool.getToolName());
         }
 
-        // 校验输入参数 schema（简单校验：params 必须为合法 JSON）
+        // 业务规则：校验输入参数符合 JSON Schema 格式
         if (StringUtils.hasText(params)) {
             try {
                 objectMapper.readTree(params);
@@ -148,9 +127,6 @@ public class ToolServiceImpl implements IToolService {
 
     @Override
     public boolean testConnection(Long toolId) {
-        if (toolId == null) {
-            throw new ServiceException("工具ID不能为空");
-        }
         AiTool tool = aiToolMapper.selectToolById(toolId);
         if (tool == null) {
             throw new ServiceException("工具不存在, toolId=" + toolId);
@@ -182,9 +158,6 @@ public class ToolServiceImpl implements IToolService {
         }
     }
 
-    /**
-     * JSON 字符串转义
-     */
     private String escapeJson(String s) {
         if (s == null) {
             return "";
