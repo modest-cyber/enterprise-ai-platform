@@ -54,12 +54,6 @@
             <artifactId>ruoyi-generator</artifactId>
         </dependency>
 
-        <!-- 业务模块（二开功能）-->
-        <dependency>
-            <groupId>com.aiplatform</groupId>
-            <artifactId>ruoyi-service</artifactId>
-        </dependency>
-
         <!-- AI模块-->
         <dependency>
             <groupId>com.aiplatform</groupId>

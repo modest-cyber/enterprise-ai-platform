@@ -1,26 +1,34 @@
 package com.aiplatform.ai.service;
 
-import com.aiplatform.ai.domain.KnowledgeDoc;
+import com.aiplatform.ai.domain.KbKnowledge;
+import com.aiplatform.ai.domain.KbDocument;
 
 import java.util.List;
 
 /**
- * 知识库服务 —— 负责文档 CRUD 管理，RAG 检索由 Python Agent 完成
+ * 知识库服务 —— 负责知识库和文档 CRUD 管理，RAG 检索由 Python Agent 完成
+ *
+ * @author aiplatform
  */
 public interface IKnowledgeService {
 
-    List<KnowledgeDoc> listDocs();
+    KbKnowledge selectKnowledgeById(Long kbId);
 
-    KnowledgeDoc getDocById(Long id);
+    List<KbKnowledge> selectKnowledgeList(KbKnowledge knowledge);
 
-    int addDoc(KnowledgeDoc doc);
+    int insertKnowledge(KbKnowledge knowledge);
 
-    int updateDoc(KnowledgeDoc doc);
+    int updateKnowledge(KbKnowledge knowledge);
 
-    int deleteDocByIds(Long[] ids);
+    int deleteKnowledgeByIds(Long[] kbIds);
 
-    /**
-     * 文档切分（文本预处理后交给 Python 做向量化和索引）
-     */
-    List<String> splitDoc(String content);
+    List<KbDocument> selectDocumentsByKbId(Long kbId);
+
+    KbDocument selectDocumentById(Long docId);
+
+    int insertDocument(KbDocument document);
+
+    int updateDocument(KbDocument document);
+
+    int deleteDocumentByIds(Long[] docIds);
 }

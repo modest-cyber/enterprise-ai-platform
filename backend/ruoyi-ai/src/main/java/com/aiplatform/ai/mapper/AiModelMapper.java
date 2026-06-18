@@ -1,15 +1,16 @@
-package com.aiplatform.ai.service;
-
-import com.aiplatform.ai.domain.AiModel;
+package com.aiplatform.ai.mapper;
 
 import java.util.List;
+import com.aiplatform.ai.domain.AiModel;
 
 /**
- * 模型配置服务 —— 管理 LLM 模型配置信息
+ * AI模型配置 数据层
  *
  * @author aiplatform
  */
-public interface IModelConfigService {
+public interface AiModelMapper
+{
+    AiModel selectModel(AiModel model);
 
     AiModel selectModelById(Long modelId);
 
@@ -23,9 +24,9 @@ public interface IModelConfigService {
 
     int updateModel(AiModel model);
 
+    int deleteModelById(Long modelId);
+
     int deleteModelByIds(Long[] modelIds);
 
-    boolean testConnection(Long modelId);
-
-    int setDefaultModel(Long modelId);
+    int setDefaultOff();
 }

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.AiToolMapper">
+
+    <resultMap type="AiTool" id="AiToolResult">
+        <id     property="toolId"          column="tool_id"           />
+        <result property="toolName"        column="tool_name"         />
+        <result property="displayName"     column="display_name"      />
+        <result property="toolType"        column="tool_type"         />
+        <result property="description"     column="description"       />
+        <result property="serverUrl"       column="server_url"        />
+        <result property="inputSchema"     column="input_schema"      />
+        <result property="outputSchema"    column="output_schema"     />
+        <result property="authType"        column="auth_type"         />
+        <result property="authConfig"      column="auth_config"       />
+        <result property="timeoutMs"       column="timeout_ms"        />
+        <result property="retryCount"      column="retry_count"       />
+        <result property="isEnabled"       column="is_enabled"        />
+        <result property="createBy"        column="create_by"         />
+        <result property="createTime"      column="create_time"       />
+        <result property="updateBy"        column="update_by"         />
+        <result property="updateTime"      column="update_time"       />
+        <result property="remark"          column="remark"            />
+    </resultMap>
+
+    <sql id="selectToolVo">
+        select tool_id, tool_name, display_name, tool_type, description, server_url,
+               input_schema, output_schema, auth_type, auth_config,
+               timeout_ms, retry_count, is_enabled,
+               create_by, create_time, update_by, update_time, remark
+        from ai_tool
+    </sql>
+
+    <select id="selectTool" parameterType="AiTool" resultMap="AiToolResult">
+        <include refid="selectToolVo"/>
+        <where>
+            <if test="toolId != null">and tool_id = #{toolId}</if>
+        </where>
+    </select>
+
+    <select id="selectToolList" parameterType="AiTool" resultMap="AiToolResult">
+        <include refid="selectToolVo"/>
+        <where>
+            <if test="toolName != null and toolName != ''">AND tool_name like concat('%', #{toolName}, '%')</if>
+            <if test="displayName != null and displayName != ''">AND display_name like concat('%', #{displayName}, '%')</if>
+            <if test="toolType != null and toolType != ''">AND tool_type = #{toolType}</if>
+            <if test="isEnabled != null">AND is_enabled = #{isEnabled}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectToolById" parameterType="Long" resultMap="AiToolResult">
+        <include refid="selectToolVo"/>
+        where tool_id = #{toolId}
+    </select>
+
+    <select id="selectToolByName" parameterType="String" resultMap="AiToolResult">
+        <include refid="selectToolVo"/>
+        where tool_name = #{toolName} limit 1
+    </select>
+
+    <select id="selectEnabledTools" resultMap="AiToolResult">
+        <include refid="selectToolVo"/>
+        where is_enabled = 1
+        order by create_time desc
+    </select>
+
+    <insert id="insertTool" parameterType="AiTool">
+        insert into ai_tool (
+            <if test="toolName != null and toolName != ''">tool_name,</if>
+            <if test="displayName != null and displayName != ''">display_name,</if>
+            <if test="toolType != null and toolType != ''">tool_type,</if>
+            <if test="description != null">description,</if>
+            <if test="serverUrl != null and serverUrl != ''">server_url,</if>
+            <if test="inputSchema != null and inputSchema != ''">input_schema,</if>
+            <if test="outputSchema != null">output_schema,</if>
+            <if test="authType != null and authType != ''">auth_type,</if>
+            <if test="authConfig != null">auth_config,</if>
+            <if test="timeoutMs != null">timeout_ms,</if>
+            <if test="retryCount != null">retry_count,</if>
+            <if test="isEnabled != null">is_enabled,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        ) values (
+            <if test="toolName != null and toolName != ''">#{toolName},</if>
+            <if test="displayName != null and displayName != ''">#{displayName},</if>
+            <if test="toolType != null and toolType != ''">#{toolType},</if>
+            <if test="description != null">#{description},</if>
+            <if test="serverUrl != null and serverUrl != ''">#{serverUrl},</if>
+            <if test="inputSchema != null and inputSchema != ''">#{inputSchema},</if>
+            <if test="outputSchema != null">#{outputSchema},</if>
+            <if test="authType != null and authType != ''">#{authType},</if>
+            <if test="authConfig != null">#{authConfig},</if>
+            <if test="timeoutMs != null">#{timeoutMs},</if>
+            <if test="retryCount != null">#{retryCount},</if>
+            <if test="isEnabled != null">#{isEnabled},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateTool" parameterType="AiTool">
+        update ai_tool
+        <set>
+            <if test="toolName != null and toolName != ''">tool_name = #{toolName},</if>
+            <if test="displayName != null and displayName != ''">display_name = #{displayName},</if>
+            <if test="toolType != null">tool_type = #{toolType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="serverUrl != null">server_url = #{serverUrl},</if>
+            <if test="inputSchema != null">input_schema = #{inputSchema},</if>
+            <if test="outputSchema != null">output_schema = #{outputSchema},</if>
+            <if test="authType != null">auth_type = #{authType},</if>
+            <if test="authConfig != null">auth_config = #{authConfig},</if>
+            <if test="timeoutMs != null">timeout_ms = #{timeoutMs},</if>
+            <if test="retryCount != null">retry_count = #{retryCount},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where tool_id = #{toolId}
+    </update>
+
+    <delete id="deleteToolById" parameterType="Long">
+        delete from ai_tool where tool_id = #{toolId}
+    </delete>
+
+    <delete id="deleteToolByIds" parameterType="Long">
+        delete from ai_tool where tool_id in
+        <foreach collection="array" item="toolId" open="(" separator="," close=")">
+            #{toolId}
+        </foreach>
+    </delete>
+
+</mapper>

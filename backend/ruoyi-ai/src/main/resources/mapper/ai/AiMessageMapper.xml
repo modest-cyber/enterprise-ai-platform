@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.AiMessageMapper">
+
+    <resultMap type="AiMessage" id="AiMessageResult">
+        <id     property="messageId"        column="message_id"        />
+        <result property="conversationId"   column="conversation_id"   />
+        <result property="role"             column="role"              />
+        <result property="content"          column="content"           />
+        <result property="tokenCount"       column="token_count"       />
+        <result property="modelName"        column="model_name"        />
+        <result property="sourceType"       column="source_type"       />
+        <result property="metadataJson"     column="metadata_json"     />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+        <result property="remark"           column="remark"            />
+    </resultMap>
+
+    <sql id="selectMessageVo">
+        select message_id, conversation_id, role, content, token_count,
+               model_name, source_type, metadata_json,
+               create_by, create_time, remark
+        from ai_message
+    </sql>
+
+    <select id="selectMessage" parameterType="AiMessage" resultMap="AiMessageResult">
+        <include refid="selectMessageVo"/>
+        <where>
+            <if test="messageId != null">and message_id = #{messageId}</if>
+        </where>
+    </select>
+
+    <select id="selectMessageList" parameterType="AiMessage" resultMap="AiMessageResult">
+        <include refid="selectMessageVo"/>
+        <where>
+            <if test="conversationId != null">AND conversation_id = #{conversationId}</if>
+            <if test="role != null and role != ''">AND role = #{role}</if>
+            <if test="sourceType != null and sourceType != ''">AND source_type = #{sourceType}</if>
+        </where>
+        order by create_time asc
+    </select>
+
+    <select id="selectMessagesByConversationId" parameterType="Long" resultMap="AiMessageResult">
+        <include refid="selectMessageVo"/>
+        where conversation_id = #{conversationId}
+        order by create_time asc
+    </select>
+
+    <select id="selectMessageById" parameterType="Long" resultMap="AiMessageResult">
+        <include refid="selectMessageVo"/>
+        where message_id = #{messageId}
+    </select>
+
+    <insert id="insertMessage" parameterType="AiMessage">
+        insert into ai_message (
+            <if test="conversationId != null">conversation_id,</if>
+            <if test="role != null and role != ''">role,</if>
+            <if test="content != null and content != ''">content,</if>
+            <if test="tokenCount != null">token_count,</if>
+            <if test="modelName != null and modelName != ''">model_name,</if>
+            <if test="sourceType != null and sourceType != ''">source_type,</if>
+            <if test="metadataJson != null and metadataJson != ''">metadata_json,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        ) values (
+            <if test="conversationId != null">#{conversationId},</if>
+            <if test="role != null and role != ''">#{role},</if>
+            <if test="content != null and content != ''">#{content},</if>
+            <if test="tokenCount != null">#{tokenCount},</if>
+            <if test="modelName != null and modelName != ''">#{modelName},</if>
+            <if test="sourceType != null and sourceType != ''">#{sourceType},</if>
+            <if test="metadataJson != null and metadataJson != ''">#{metadataJson},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateMessage" parameterType="AiMessage">
+        update ai_message
+        <set>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="tokenCount != null">token_count = #{tokenCount},</if>
+            <if test="modelName != null and modelName != ''">model_name = #{modelName},</if>
+            <if test="metadataJson != null">metadata_json = #{metadataJson},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        where message_id = #{messageId}
+    </update>
+
+    <delete id="deleteMessageById" parameterType="Long">
+        delete from ai_message where message_id = #{messageId}
+    </delete>
+
+    <delete id="deleteMessageByIds" parameterType="Long">
+        delete from ai_message where message_id in
+        <foreach collection="array" item="messageId" open="(" separator="," close=")">
+            #{messageId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteMessagesByConversationId" parameterType="Long">
+        delete from ai_message where conversation_id = #{conversationId}
+    </delete>
+
+</mapper>

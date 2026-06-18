@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.AgentConfigMapper">
+
+    <resultMap type="AgentConfig" id="AgentConfigResult">
+        <id     property="agentId"         column="agent_id"          />
+        <result property="agentName"       column="agent_name"        />
+        <result property="agentType"       column="agent_type"        />
+        <result property="description"     column="description"       />
+        <result property="modelId"         column="model_id"          />
+        <result property="systemPrompt"    column="system_prompt"     />
+        <result property="toolsJson"       column="tools_json"        />
+        <result property="workflowJson"    column="workflow_json"     />
+        <result property="maxIterations"   column="max_iterations"    />
+        <result property="temperature"     column="temperature"       />
+        <result property="timeoutSeconds"  column="timeout_seconds"   />
+        <result property="status"          column="status"            />
+        <result property="createBy"        column="create_by"         />
+        <result property="createTime"      column="create_time"       />
+        <result property="updateBy"        column="update_by"         />
+        <result property="updateTime"      column="update_time"       />
+        <result property="remark"          column="remark"            />
+    </resultMap>
+
+    <sql id="selectAgentVo">
+        select agent_id, agent_name, agent_type, description, model_id,
+               system_prompt, tools_json, workflow_json, max_iterations,
+               temperature, timeout_seconds, status,
+               create_by, create_time, update_by, update_time, remark
+        from agent_config
+    </sql>
+
+    <select id="selectAgent" parameterType="AgentConfig" resultMap="AgentConfigResult">
+        <include refid="selectAgentVo"/>
+        <where>
+            <if test="agentId != null">and agent_id = #{agentId}</if>
+        </where>
+    </select>
+
+    <select id="selectAgentList" parameterType="AgentConfig" resultMap="AgentConfigResult">
+        <include refid="selectAgentVo"/>
+        <where>
+            <if test="agentName != null and agentName != ''">AND agent_name like concat('%', #{agentName}, '%')</if>
+            <if test="agentType != null and agentType != ''">AND agent_type = #{agentType}</if>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectAgentById" parameterType="Long" resultMap="AgentConfigResult">
+        <include refid="selectAgentVo"/>
+        where agent_id = #{agentId}
+    </select>
+
+    <select id="selectAgentByName" parameterType="String" resultMap="AgentConfigResult">
+        <include refid="selectAgentVo"/>
+        where agent_name = #{agentName} limit 1
+    </select>
+
+    <insert id="insertAgent" parameterType="AgentConfig">
+        insert into agent_config (
+            <if test="agentName != null and agentName != ''">agent_name,</if>
+            <if test="agentType != null and agentType != ''">agent_type,</if>
+            <if test="description != null">description,</if>
+            <if test="modelId != null">model_id,</if>
+            <if test="systemPrompt != null">system_prompt,</if>
+            <if test="toolsJson != null">tools_json,</if>
+            <if test="workflowJson != null">workflow_json,</if>
+            <if test="maxIterations != null">max_iterations,</if>
+            <if test="temperature != null">temperature,</if>
+            <if test="timeoutSeconds != null">timeout_seconds,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        ) values (
+            <if test="agentName != null and agentName != ''">#{agentName},</if>
+            <if test="agentType != null and agentType != ''">#{agentType},</if>
+            <if test="description != null">#{description},</if>
+            <if test="modelId != null">#{modelId},</if>
+            <if test="systemPrompt != null">#{systemPrompt},</if>
+            <if test="toolsJson != null">#{toolsJson},</if>
+            <if test="workflowJson != null">#{workflowJson},</if>
+            <if test="maxIterations != null">#{maxIterations},</if>
+            <if test="temperature != null">#{temperature},</if>
+            <if test="timeoutSeconds != null">#{timeoutSeconds},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateAgent" parameterType="AgentConfig">
+        update agent_config
+        <set>
+            <if test="agentName != null and agentName != ''">agent_name = #{agentName},</if>
+            <if test="agentType != null">agent_type = #{agentType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="modelId != null">model_id = #{modelId},</if>
+            <if test="systemPrompt != null">system_prompt = #{systemPrompt},</if>
+            <if test="toolsJson != null">tools_json = #{toolsJson},</if>
+            <if test="workflowJson != null">workflow_json = #{workflowJson},</if>
+            <if test="maxIterations != null">max_iterations = #{maxIterations},</if>
+            <if test="temperature != null">temperature = #{temperature},</if>
+            <if test="timeoutSeconds != null">timeout_seconds = #{timeoutSeconds},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where agent_id = #{agentId}
+    </update>
+
+    <delete id="deleteAgentById" parameterType="Long">
+        delete from agent_config where agent_id = #{agentId}
+    </delete>
+
+    <delete id="deleteAgentByIds" parameterType="Long">
+        delete from agent_config where agent_id in
+        <foreach collection="array" item="agentId" open="(" separator="," close=")">
+            #{agentId}
+        </foreach>
+    </delete>
+
+</mapper>

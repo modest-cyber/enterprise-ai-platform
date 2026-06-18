@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.AiModelMapper">
+
+    <resultMap type="AiModel" id="AiModelResult">
+        <id     property="modelId"         column="model_id"          />
+        <result property="modelName"       column="model_name"        />
+        <result property="displayName"     column="display_name"      />
+        <result property="provider"        column="provider"          />
+        <result property="apiKey"          column="api_key"           />
+        <result property="baseUrl"         column="base_url"          />
+        <result property="modelType"       column="model_type"        />
+        <result property="maxTokens"       column="max_tokens"        />
+        <result property="temperature"     column="temperature"       />
+        <result property="isDefault"       column="is_default"        />
+        <result property="isEnabled"       column="is_enabled"        />
+        <result property="createBy"        column="create_by"         />
+        <result property="createTime"      column="create_time"       />
+        <result property="updateBy"        column="update_by"         />
+        <result property="updateTime"      column="update_time"       />
+        <result property="remark"          column="remark"            />
+    </resultMap>
+
+    <sql id="selectModelVo">
+        select model_id, model_name, display_name, provider, api_key, base_url,
+               model_type, max_tokens, temperature, is_default, is_enabled,
+               create_by, create_time, update_by, update_time, remark
+        from ai_model
+    </sql>
+
+    <select id="selectModel" parameterType="AiModel" resultMap="AiModelResult">
+        <include refid="selectModelVo"/>
+        <where>
+            <if test="modelId != null">and model_id = #{modelId}</if>
+        </where>
+    </select>
+
+    <select id="selectModelList" parameterType="AiModel" resultMap="AiModelResult">
+        <include refid="selectModelVo"/>
+        <where>
+            <if test="modelName != null and modelName != ''">AND model_name like concat('%', #{modelName}, '%')</if>
+            <if test="displayName != null and displayName != ''">AND display_name like concat('%', #{displayName}, '%')</if>
+            <if test="provider != null and provider != ''">AND provider = #{provider}</if>
+            <if test="modelType != null and modelType != ''">AND model_type = #{modelType}</if>
+            <if test="isEnabled != null">AND is_enabled = #{isEnabled}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectModelById" parameterType="Long" resultMap="AiModelResult">
+        <include refid="selectModelVo"/>
+        where model_id = #{modelId}
+    </select>
+
+    <select id="selectEnabledModels" resultMap="AiModelResult">
+        <include refid="selectModelVo"/>
+        where is_enabled = 1
+        order by is_default desc, create_time desc
+    </select>
+
+    <select id="selectDefaultModel" resultMap="AiModelResult">
+        <include refid="selectModelVo"/>
+        where is_default = 1 limit 1
+    </select>
+
+    <insert id="insertModel" parameterType="AiModel">
+        insert into ai_model (
+            <if test="modelName != null and modelName != ''">model_name,</if>
+            <if test="displayName != null and displayName != ''">display_name,</if>
+            <if test="provider != null and provider != ''">provider,</if>
+            <if test="apiKey != null and apiKey != ''">api_key,</if>
+            <if test="baseUrl != null and baseUrl != ''">base_url,</if>
+            <if test="modelType != null">model_type,</if>
+            <if test="maxTokens != null">max_tokens,</if>
+            <if test="temperature != null">temperature,</if>
+            <if test="isDefault != null">is_default,</if>
+            <if test="isEnabled != null">is_enabled,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        ) values (
+            <if test="modelName != null and modelName != ''">#{modelName},</if>
+            <if test="displayName != null and displayName != ''">#{displayName},</if>
+            <if test="provider != null and provider != ''">#{provider},</if>
+            <if test="apiKey != null and apiKey != ''">#{apiKey},</if>
+            <if test="baseUrl != null and baseUrl != ''">#{baseUrl},</if>
+            <if test="modelType != null">#{modelType},</if>
+            <if test="maxTokens != null">#{maxTokens},</if>
+            <if test="temperature != null">#{temperature},</if>
+            <if test="isDefault != null">#{isDefault},</if>
+            <if test="isEnabled != null">#{isEnabled},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateModel" parameterType="AiModel">
+        update ai_model
+        <set>
+            <if test="modelName != null and modelName != ''">model_name = #{modelName},</if>
+            <if test="displayName != null and displayName != ''">display_name = #{displayName},</if>
+            <if test="provider != null">provider = #{provider},</if>
+            <if test="apiKey != null and apiKey != ''">api_key = #{apiKey},</if>
+            <if test="baseUrl != null and baseUrl != ''">base_url = #{baseUrl},</if>
+            <if test="modelType != null">model_type = #{modelType},</if>
+            <if test="maxTokens != null">max_tokens = #{maxTokens},</if>
+            <if test="temperature != null">temperature = #{temperature},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where model_id = #{modelId}
+    </update>
+
+    <delete id="deleteModelById" parameterType="Long">
+        delete from ai_model where model_id = #{modelId}
+    </delete>
+
+    <delete id="deleteModelByIds" parameterType="Long">
+        delete from ai_model where model_id in
+        <foreach collection="array" item="modelId" open="(" separator="," close=")">
+            #{modelId}
+        </foreach>
+    </delete>
+
+    <update id="setDefaultOff">
+        update ai_model set is_default = 0 where is_default = 1
+    </update>
+
+</mapper>

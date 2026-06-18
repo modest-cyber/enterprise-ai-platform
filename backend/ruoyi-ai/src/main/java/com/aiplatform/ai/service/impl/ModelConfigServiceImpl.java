@@ -1,6 +1,6 @@
 package com.aiplatform.ai.service.impl;
 
-import com.aiplatform.ai.domain.ModelConfig;
+import com.aiplatform.ai.domain.AiModel;
 import com.aiplatform.ai.service.IModelConfigService;
 import org.springframework.stereotype.Service;
 
@@ -11,32 +11,47 @@ import java.util.List;
 public class ModelConfigServiceImpl implements IModelConfigService {
 
     @Override
-    public List<ModelConfig> listConfigs() {
+    public AiModel selectModelById(Long modelId) {
+        return null;
+    }
+
+    @Override
+    public List<AiModel> selectModelList(AiModel model) {
         return new ArrayList<>();
     }
 
     @Override
-    public ModelConfig getConfigById(Long id) {
+    public List<AiModel> selectEnabledModels() {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public AiModel selectDefaultModel() {
         return null;
     }
 
     @Override
-    public int addConfig(ModelConfig config) {
+    public int insertModel(AiModel model) {
         return 0;
     }
 
     @Override
-    public int updateConfig(ModelConfig config) {
+    public int updateModel(AiModel model) {
         return 0;
     }
 
     @Override
-    public int deleteConfigByIds(Long[] ids) {
+    public int deleteModelByIds(Long[] modelIds) {
         return 0;
     }
 
     @Override
-    public ModelConfig getDefaultConfig() {
-        return null;
+    public boolean testConnection(Long modelId) {
+        return false;
+    }
+
+    @Override
+    public int setDefaultModel(Long modelId) {
+        return 0;
     }
 }

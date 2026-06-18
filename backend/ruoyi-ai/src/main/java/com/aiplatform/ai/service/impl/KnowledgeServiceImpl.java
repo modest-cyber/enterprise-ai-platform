@@ -1,46 +1,63 @@
 package com.aiplatform.ai.service.impl;
 
-import com.aiplatform.ai.domain.KnowledgeDoc;
+import com.aiplatform.ai.domain.KbKnowledge;
+import com.aiplatform.ai.domain.KbDocument;
 import com.aiplatform.ai.service.IKnowledgeService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class KnowledgeServiceImpl implements IKnowledgeService {
 
     @Override
-    public List<KnowledgeDoc> listDocs() {
-        return new ArrayList<>();
-    }
-
-    @Override
-    public KnowledgeDoc getDocById(Long id) {
+    public KbKnowledge selectKnowledgeById(Long kbId) {
         return null;
     }
 
     @Override
-    public int addDoc(KnowledgeDoc doc) {
+    public List<KbKnowledge> selectKnowledgeList(KbKnowledge knowledge) {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public int insertKnowledge(KbKnowledge knowledge) {
         return 0;
     }
 
     @Override
-    public int updateDoc(KnowledgeDoc doc) {
+    public int updateKnowledge(KbKnowledge knowledge) {
         return 0;
     }
 
     @Override
-    public int deleteDocByIds(Long[] ids) {
+    public int deleteKnowledgeByIds(Long[] kbIds) {
         return 0;
     }
 
     @Override
-    public List<String> splitDoc(String content) {
-        if (content == null || content.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return Arrays.asList(content.split("\\n{2,}"));
+    public List<KbDocument> selectDocumentsByKbId(Long kbId) {
+        return new ArrayList<>();
+    }
+
+    @Override
+    public KbDocument selectDocumentById(Long docId) {
+        return null;
+    }
+
+    @Override
+    public int insertDocument(KbDocument document) {
+        return 0;
+    }
+
+    @Override
+    public int updateDocument(KbDocument document) {
+        return 0;
+    }
+
+    @Override
+    public int deleteDocumentByIds(Long[] docIds) {
+        return 0;
     }
 }

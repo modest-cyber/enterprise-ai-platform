@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.KbKnowledgeMapper">
+
+    <resultMap type="KbKnowledge" id="KbKnowledgeResult">
+        <id     property="kbId"             column="kb_id"             />
+        <result property="name"             column="name"              />
+        <result property="description"      column="description"       />
+        <result property="kbType"           column="kb_type"           />
+        <result property="embeddingModel"   column="embedding_model"   />
+        <result property="chunkSize"        column="chunk_size"        />
+        <result property="chunkOverlap"     column="chunk_overlap"     />
+        <result property="status"           column="status"            />
+        <result property="docCount"         column="doc_count"         />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+        <result property="updateBy"         column="update_by"         />
+        <result property="updateTime"       column="update_time"       />
+        <result property="remark"           column="remark"            />
+    </resultMap>
+
+    <sql id="selectKnowledgeVo">
+        select kb_id, name, description, kb_type, embedding_model,
+               chunk_size, chunk_overlap, status, doc_count,
+               create_by, create_time, update_by, update_time, remark
+        from kb_knowledge
+    </sql>
+
+    <select id="selectKnowledge" parameterType="KbKnowledge" resultMap="KbKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        <where>
+            <if test="kbId != null">and kb_id = #{kbId}</if>
+        </where>
+    </select>
+
+    <select id="selectKnowledgeList" parameterType="KbKnowledge" resultMap="KbKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        <where>
+            <if test="name != null and name != ''">AND name like concat('%', #{name}, '%')</if>
+            <if test="kbType != null and kbType != ''">AND kb_type = #{kbType}</if>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectKnowledgeById" parameterType="Long" resultMap="KbKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        where kb_id = #{kbId}
+    </select>
+
+    <insert id="insertKnowledge" parameterType="KbKnowledge">
+        insert into kb_knowledge (
+            <if test="name != null and name != ''">name,</if>
+            <if test="description != null">description,</if>
+            <if test="kbType != null and kbType != ''">kb_type,</if>
+            <if test="embeddingModel != null and embeddingModel != ''">embedding_model,</if>
+            <if test="chunkSize != null">chunk_size,</if>
+            <if test="chunkOverlap != null">chunk_overlap,</if>
+            <if test="status != null">status,</if>
+            <if test="docCount != null">doc_count,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        ) values (
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="description != null">#{description},</if>
+            <if test="kbType != null and kbType != ''">#{kbType},</if>
+            <if test="embeddingModel != null and embeddingModel != ''">#{embeddingModel},</if>
+            <if test="chunkSize != null">#{chunkSize},</if>
+            <if test="chunkOverlap != null">#{chunkOverlap},</if>
+            <if test="status != null">#{status},</if>
+            <if test="docCount != null">#{docCount},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateKnowledge" parameterType="KbKnowledge">
+        update kb_knowledge
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="kbType != null">kb_type = #{kbType},</if>
+            <if test="embeddingModel != null">embedding_model = #{embeddingModel},</if>
+            <if test="chunkSize != null">chunk_size = #{chunkSize},</if>
+            <if test="chunkOverlap != null">chunk_overlap = #{chunkOverlap},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="docCount != null">doc_count = #{docCount},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where kb_id = #{kbId}
+    </update>
+
+    <delete id="deleteKnowledgeById" parameterType="Long">
+        delete from kb_knowledge where kb_id = #{kbId}
+    </delete>
+
+    <delete id="deleteKnowledgeByIds" parameterType="Long">
+        delete from kb_knowledge where kb_id in
+        <foreach collection="array" item="kbId" open="(" separator="," close=")">
+            #{kbId}
+        </foreach>
+    </delete>
+
+</mapper>
