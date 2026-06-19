@@ -2,12 +2,14 @@ package com.aiplatform.ai.mapper;
 
 import java.util.List;
 import com.aiplatform.ai.domain.AgentConfig;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * Agent配置 数据层
  *
  * @author aiplatform
  */
+@Mapper
 public interface AgentConfigMapper
 {
     AgentConfig selectAgent(AgentConfig agent);

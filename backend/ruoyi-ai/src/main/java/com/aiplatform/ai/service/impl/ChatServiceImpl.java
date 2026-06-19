@@ -2,6 +2,7 @@ package com.aiplatform.ai.service.impl;
 
 import com.aiplatform.ai.service.IChatService;
 import com.aiplatform.common.exception.ServiceException;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,10 +28,10 @@ import java.util.Map;
  *
  * @author aiplatform
  */
+@Slf4j
 @Service
 public class ChatServiceImpl implements IChatService {
 
-    private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
 
     /** LLM API Key（从配置文件读取，生产环境通过 ModelConfigService 动态获取） */
     @Value("${ai.openai.api-key:}")

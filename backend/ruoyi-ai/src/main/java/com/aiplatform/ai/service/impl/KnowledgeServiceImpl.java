@@ -1,133 +1,117 @@
 package com.aiplatform.ai.service.impl;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-
-import com.aiplatform.ai.domain.KbKnowledge;
-import com.aiplatform.ai.domain.KbDocument;
-import com.aiplatform.ai.service.IKnowledgeService;
-import com.aiplatform.common.exception.ServiceException;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import com.aiplatform.ai.domain.KbDocument;
+import com.aiplatform.ai.domain.KbKnowledge;
+import com.aiplatform.ai.domain.dto.SearchRequestDto;
+import com.aiplatform.ai.mapper.KbDocumentMapper;
+import com.aiplatform.ai.mapper.KbKnowledgeMapper;
+import com.aiplatform.ai.service.IKnowledgeService;
+import com.aiplatform.common.utils.DateUtils;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * 知识库服务实现 —— 负责知识库和文档的CRUD操作
- * <p>
- * 当前为骨架实现（Mapper 未注入），P2 阶段完善后对接 KbKnowledgeMapper 和 KbDocumentMapper。
- * 文档上传、文本提取、Embedding、Milvus索引等异步操作在 P5 阶段完善。
- *
- * @author aiplatform
- */
+@Slf4j
 @Service
 public class KnowledgeServiceImpl implements IKnowledgeService {
 
-    /**
-     * 根据ID查询知识库
-     */
-    @Override
-    public KbKnowledge selectKnowledgeById(Long kbId) {
-        if (kbId == null) {
-            throw new ServiceException("知识库ID不能为空");
-        }
-        return null;
-    }
+    @Autowired
+    private KbKnowledgeMapper knowledgeMapper;
 
-    /**
-     * 分页查询知识库列表
-     */
+    @Autowired
+    private KbDocumentMapper documentMapper;
+
     @Override
     public List<KbKnowledge> selectKnowledgeList(KbKnowledge knowledge) {
-        return new ArrayList<>();
+        return knowledgeMapper.selectKnowledgeList(knowledge);
     }
 
-    /**
-     * 新增知识库
-     */
+    @Override
+    public KbKnowledge selectKnowledgeById(Long kbId) {
+        return knowledgeMapper.selectKnowledgeById(kbId);
+    }
+
     @Override
     public int insertKnowledge(KbKnowledge knowledge) {
-        if (knowledge == null || !StringUtils.hasText(knowledge.getName())) {
-            throw new ServiceException("知识库名称不能为空");
+        Date now = DateUtils.getNowDate();
+        knowledge.setCreateTime(now);
+        if (knowledge.getStatus() == null) {
+            knowledge.setStatus(1);
         }
-        return 0;
+        if (knowledge.getDocCount() == null) {
+            knowledge.setDocCount(0);
+        }
+        if (knowledge.getChunkSize() == null) {
+            knowledge.setChunkSize(512);
+        }
+        if (knowledge.getChunkOverlap() == null) {
+            knowledge.setChunkOverlap(50);
+        }
+        return knowledgeMapper.insertKnowledge(knowledge);
     }
 
-    /**
-     * 修改知识库
-     */
     @Override
     public int updateKnowledge(KbKnowledge knowledge) {
-        if (knowledge == null || knowledge.getKbId() == null) {
-            throw new ServiceException("知识库ID不能为空");
-        }
-        return 0;
+        knowledge.setUpdateTime(DateUtils.getNowDate());
+        return knowledgeMapper.updateKnowledge(knowledge);
     }
 
-    /**
-     * 批量删除知识库（物理删除）
-     */
     @Override
     public int deleteKnowledgeByIds(Long[] kbIds) {
-        if (kbIds == null || kbIds.length == 0) {
-            throw new ServiceException("待删除的知识库ID列表不能为空");
-        }
-        return 0;
+        return knowledgeMapper.deleteKnowledgeByIds(kbIds);
     }
 
-    /**
-     * 查询知识库下的文档列表
-     */
     @Override
-    public List<KbDocument> selectDocumentsByKbId(Long kbId) {
-        if (kbId == null) {
-            throw new ServiceException("知识库ID不能为空");
+    public List<Map<String, Object>> search(SearchRequestDto dto) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        if (dto.getKbIds() == null || dto.getKbIds().isEmpty()) {
+            return results;
         }
-        return new ArrayList<>();
+        for (Long kbId : dto.getKbIds()) {
+            KbDocument query = new KbDocument();
+            query.setKbId(kbId);
+            List<KbDocument> docs = documentMapper.selectDocumentList(query);
+            for (KbDocument doc : docs) {
+                if (doc.getContentText() != null
+                        && doc.getContentText().toLowerCase().contains(dto.getQuery().toLowerCase())) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("docId", doc.getDocId());
+                    item.put("fileName", doc.getFileName());
+                    item.put("kbId", doc.getKbId());
+                    item.put("content", doc.getContentText());
+                    item.put("score", 0.85);
+                    item.put("snippet", getSnippet(doc.getContentText(), dto.getQuery()));
+                    results.add(item);
+                }
+            }
+        }
+        return results;
     }
 
-    /**
-     * 根据ID查询文档
-     */
-    @Override
-    public KbDocument selectDocumentById(Long docId) {
-        if (docId == null) {
-            throw new ServiceException("文档ID不能为空");
-        }
-        return null;
+    private String getSnippet(String content, String query) {
+        if (content == null || content.isEmpty()) return "";
+        int idx = content.toLowerCase().indexOf(query.toLowerCase());
+        if (idx < 0) return content.length() > 200 ? content.substring(0, 200) + "..." : content;
+        int start = Math.max(0, idx - 80);
+        int end = Math.min(content.length(), idx + query.length() + 80);
+        String snippet = content.substring(start, end);
+        return (start > 0 ? "..." : "") + snippet + (end < content.length() ? "..." : "");
     }
 
-    /**
-     * 新增文档记录
-     */
     @Override
-    public int insertDocument(KbDocument document) {
-        if (document == null || document.getKbId() == null) {
-            throw new ServiceException("文档所属知识库ID不能为空");
-        }
-        if (!StringUtils.hasText(document.getFileName())) {
-            throw new ServiceException("文件名不能为空");
-        }
-        return 0;
+    public List<KbDocument> selectDocList(Long kbId) {
+        KbDocument query = new KbDocument();
+        query.setKbId(kbId);
+        return documentMapper.selectDocumentList(query);
     }
 
-    /**
-     * 更新文档信息
-     */
     @Override
-    public int updateDocument(KbDocument document) {
-        if (document == null || document.getDocId() == null) {
-            throw new ServiceException("文档ID不能为空");
-        }
-        return 0;
-    }
-
-    /**
-     * 批量删除文档（逻辑删除，设置 is_delete=1）
-     */
-    @Override
-    public int deleteDocumentByIds(Long[] docIds) {
-        if (docIds == null || docIds.length == 0) {
-            throw new ServiceException("待删除的文档ID列表不能为空");
-        }
-        return 0;
+    public KbDocument selectDocById(Long docId) {
+        return documentMapper.selectDocumentById(docId);
     }
 }

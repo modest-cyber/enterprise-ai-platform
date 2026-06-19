@@ -13,6 +13,7 @@ import com.aiplatform.ai.mapper.AiModelMapper;
 import com.aiplatform.ai.service.IModelConfigService;
 import com.aiplatform.common.exception.ServiceException;
 import com.aiplatform.common.utils.SecurityUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
  * @author aiplatform
  */
 @Service
+@Slf4j
 public class ModelConfigServiceImpl implements IModelConfigService {
 
-    private static final Logger log = LoggerFactory.getLogger(ModelConfigServiceImpl.class);
 
     @Autowired
     private AiModelMapper aiModelMapper;

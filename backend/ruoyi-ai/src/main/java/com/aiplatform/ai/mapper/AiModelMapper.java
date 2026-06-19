@@ -2,12 +2,14 @@ package com.aiplatform.ai.mapper;
 
 import java.util.List;
 import com.aiplatform.ai.domain.AiModel;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * AI模型配置 数据层
  *
  * @author aiplatform
  */
+@Mapper
 public interface AiModelMapper
 {
     AiModel selectModel(AiModel model);

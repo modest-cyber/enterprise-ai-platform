@@ -2,12 +2,14 @@ package com.aiplatform.ai.mapper;
 
 import java.util.List;
 import com.aiplatform.ai.domain.AiTool;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * MCP工具注册 数据层
  *
  * @author aiplatform
  */
+@Mapper
 public interface AiToolMapper
 {
     AiTool selectTool(AiTool tool);

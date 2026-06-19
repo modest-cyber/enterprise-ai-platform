@@ -163,6 +163,34 @@ export const dynamicRoutes = [
         meta: { title: '修改生成配置', activeMenu: '/tool/gen' }
       }
     ]
+  },
+  {
+    path: '/ai/knowledge/detail',
+    component: Layout,
+    hidden: true,
+    permissions: ['ai:kb:query'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/ai/knowledge/kbDetail.vue'),
+        name: 'KbDetail',
+        meta: { title: '知识库详情', activeMenu: '/ai/knowledge' }
+      }
+    ]
+  },
+  {
+    path: '/ai/knowledge/search',
+    component: Layout,
+    hidden: true,
+    permissions: ['ai:kb:search'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/ai/knowledge/kbSearch.vue'),
+        name: 'KbSearch',
+        meta: { title: '知识检索', activeMenu: '/ai/knowledge' }
+      }
+    ]
   }
 ]
 

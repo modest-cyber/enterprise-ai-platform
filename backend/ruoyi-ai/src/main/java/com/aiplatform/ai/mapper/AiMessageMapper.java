@@ -2,12 +2,14 @@ package com.aiplatform.ai.mapper;
 
 import java.util.List;
 import com.aiplatform.ai.domain.AiMessage;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * AI消息 数据层
  *
  * @author aiplatform
  */
+@Mapper
 public interface AiMessageMapper
 {
     AiMessage selectMessage(AiMessage message);

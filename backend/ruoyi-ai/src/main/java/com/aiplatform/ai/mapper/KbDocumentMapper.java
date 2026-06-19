@@ -2,12 +2,14 @@ package com.aiplatform.ai.mapper;
 
 import java.util.List;
 import com.aiplatform.ai.domain.KbDocument;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * 知识文档 数据层
  *
  * @author aiplatform
  */
+@Mapper
 public interface KbDocumentMapper
 {
     KbDocument selectDocument(KbDocument document);
