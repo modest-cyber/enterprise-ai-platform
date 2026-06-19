@@ -1,36 +1,78 @@
 package com.aiplatform.ai.service.impl;
 
 import java.util.Date;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import com.aiplatform.ai.domain.AiConversation;
 import com.aiplatform.ai.domain.AiMessage;
-import com.aiplatform.ai.dto.ChatRequestDto;
-import com.aiplatform.ai.dto.ChatResponseDto;
+import com.aiplatform.ai.domain.dto.ChatRequestDto;
+import com.aiplatform.ai.domain.dto.ChatResponseDto;
 import com.aiplatform.ai.mapper.AiConversationMapper;
 import com.aiplatform.ai.mapper.AiMessageMapper;
 import com.aiplatform.ai.service.IAiChatService;
 import com.aiplatform.common.exception.ServiceException;
 import com.aiplatform.common.utils.DateUtils;
 import com.aiplatform.common.utils.SecurityUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * AI 聊天服务实现
+ * AI 聊天服务实现 — 统一管理会话 CRUD 与消息发送
  *
  * @author aiplatform
  */
+@Slf4j
 @Service
 public class AiChatServiceImpl implements IAiChatService {
 
-    private static final Logger log = LoggerFactory.getLogger(AiChatServiceImpl.class);
 
     @Autowired
     private AiConversationMapper conversationMapper;
 
     @Autowired
     private AiMessageMapper messageMapper;
+
+    // ==================== 会话 CRUD ====================
+
+    @Override
+    public List<AiConversation> selectConversationList(AiConversation conversation) {
+        return conversationMapper.selectConversationList(conversation);
+    }
+
+    @Override
+    public AiConversation selectConversationById(Long id) {
+        return conversationMapper.selectConversationById(id);
+    }
+
+    @Override
+    public Long createConversation(AiConversation conversation) {
+        Date now = DateUtils.getNowDate();
+        conversation.setCreateTime(now);
+        conversation.setUpdateTime(now);
+        conversationMapper.insertConversation(conversation);
+        return conversation.getConversationId();
+    }
+
+    @Override
+    public int updateConversation(AiConversation conversation) {
+        conversation.setUpdateTime(DateUtils.getNowDate());
+        return conversationMapper.updateConversation(conversation);
+    }
+
+    @Override
+    public int deleteConversation(Long[] ids) {
+        for (Long conversationId : ids) {
+            messageMapper.deleteMessagesByConversationId(conversationId);
+        }
+        return conversationMapper.deleteConversationByIds(ids);
+    }
+
+    @Override
+    public List<AiMessage> listMessages(Long conversationId) {
+        return messageMapper.selectMessagesByConversationId(conversationId);
+    }
+
+    // ==================== 消息发送 ====================
 
     @Override
     public ChatResponseDto chat(ChatRequestDto dto) {

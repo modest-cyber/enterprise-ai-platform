@@ -92,8 +92,7 @@ import { ref, reactive, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
-import { listConversation, delConversation, listMessages } from '@/api/ai/conversation'
-import { sendChat } from '@/api/ai/chat'
+import { listConversation, createConversation, deleteConversation, listMessages, sendChat } from '@/api/ai/chat'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
@@ -108,9 +107,16 @@ const conversationParams = reactive({
 })
 
 function handleNewSession() {
-  currentConversationId.value = null
-  messages.value = []
-  inputMessage.value = ''
+  const title = '新会话'
+  createConversation({ title: title, agentType: agentType.value || null }).then((response: any) => {
+    const convId = response.data
+    currentConversationId.value = convId
+    messages.value = []
+    inputMessage.value = ''
+    fetchConversationList()
+  }).catch(() => {
+    ElMessage.error('创建会话失败')
+  })
 }
 
 function handleSelectConversation(item: any) {
@@ -193,7 +199,7 @@ function handleDeleteConversation(item: any) {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    delConversation(item.conversationId).then(() => {
+    deleteConversation(item.conversationId).then(() => {
       ElMessage.success('删除成功')
       if (currentConversationId.value === item.conversationId) {
         handleNewSession()
@@ -225,21 +231,21 @@ onMounted(() => {
 .chat-container {
   display: flex;
   height: calc(100vh - 84px);
-  background-color: #f5f7fa;
+  background-color: var(--el-bg-color-page, #f5f7fa);
 }
 
 .chat-left {
   width: 280px;
   min-width: 280px;
-  background-color: #fff;
-  border-right: 1px solid #e8e8e8;
+  background-color: var(--el-bg-color, #fff);
+  border-right: 1px solid var(--el-border-color-light, #e8e8e8);
   display: flex;
   flex-direction: column;
 }
 
 .chat-left-header {
   padding: 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--el-border-color-light, #e8e8e8);
 }
 
 .new-session-btn {
@@ -260,12 +266,12 @@ onMounted(() => {
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f5f7fa;
+    background-color: var(--el-fill-color-light, #f5f7fa);
   }
 
   &.active {
-    background-color: #ecf5ff;
-    border-left: 3px solid #409eff;
+    background-color: var(--el-color-primary-light-9, #ecf5ff);
+    border-left: 3px solid var(--el-color-primary, #409eff);
   }
 }
 
@@ -276,7 +282,7 @@ onMounted(() => {
 
 .conversation-title {
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary, #303133);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -291,7 +297,7 @@ onMounted(() => {
 
 .conversation-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
 }
 
 .conversation-delete {
@@ -305,7 +311,7 @@ onMounted(() => {
 
 .no-conversation {
   text-align: center;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   padding: 40px 16px;
   font-size: 14px;
 }
@@ -314,7 +320,7 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #fff;
+  background-color: var(--el-bg-color, #fff);
   overflow: hidden;
 }
 
@@ -324,10 +330,10 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
 
   .empty-icon {
-    color: #c0c4cc;
+    color: var(--el-text-color-placeholder, #c0c4cc);
     margin-bottom: 16px;
   }
 
@@ -347,12 +353,12 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: var(--el-bg-color-page, #f5f7fa);
 }
 
 .chat-no-messages {
   text-align: center;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   padding-top: 60px;
   font-size: 15px;
 }
@@ -375,21 +381,21 @@ onMounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: #e8ecf4;
+  background-color: var(--el-border-color-extra-light, #e8ecf4);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
   .message-user & {
-    background-color: #d9e9ff;
-    color: #409eff;
+    background-color: var(--el-color-primary-light-8, #d9e9ff);
+    color: var(--el-color-primary, #409eff);
     margin-left: 12px;
   }
 
   .message-ai & {
-    background-color: #e8f5e9;
-    color: #67c23a;
+    background-color: var(--el-color-success-light-9, #e8f5e9);
+    color: var(--el-color-success, #67c23a);
     margin-right: 12px;
   }
 }
@@ -400,7 +406,7 @@ onMounted(() => {
 
 .message-role {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   margin-bottom: 4px;
 }
 
@@ -412,27 +418,27 @@ onMounted(() => {
   word-break: break-word;
 
   .message-user & {
-    background-color: #409eff;
+    background-color: var(--el-color-primary, #409eff);
     color: #fff;
   }
 
   .message-ai & {
-    background-color: #fff;
-    color: #303133;
+    background-color: var(--el-bg-color, #fff);
+    color: var(--el-text-color-primary, #303133);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   }
 }
 
 .message-time {
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder, #c0c4cc);
   margin-top: 4px;
 }
 
 .chat-input {
   padding: 16px 20px;
-  border-top: 1px solid #e8e8e8;
-  background-color: #fff;
+  border-top: 1px solid var(--el-border-color-light, #e8e8e8);
+  background-color: var(--el-bg-color, #fff);
 }
 
 .chat-input-actions {
