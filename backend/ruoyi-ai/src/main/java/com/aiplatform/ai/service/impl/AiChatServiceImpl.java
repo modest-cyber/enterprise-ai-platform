@@ -16,15 +16,9 @@ import com.aiplatform.common.utils.DateUtils;
 import com.aiplatform.common.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * AI 聊天服务实现 — 统一管理会话 CRUD 与消息发送
- *
- * @author aiplatform
- */
 @Slf4j
 @Service
 public class AiChatServiceImpl implements IAiChatService {
-
 
     @Autowired
     private AiConversationMapper conversationMapper;
@@ -72,6 +66,64 @@ public class AiChatServiceImpl implements IAiChatService {
         return messageMapper.selectMessagesByConversationId(conversationId);
     }
 
+    @Override
+    public void renameConversation(Long id, String title) {
+        AiConversation conv = new AiConversation();
+        conv.setConversationId(id);
+        conv.setTitle(title);
+        conv.setUpdateTime(DateUtils.getNowDate());
+        conversationMapper.updateConversation(conv);
+    }
+
+    @Override
+    public String generateTitle(Long id) {
+        AiConversation conv = conversationMapper.selectConversationById(id);
+        if (conv == null) {
+            throw new ServiceException("会话不存在");
+        }
+        List<AiMessage> messages = messageMapper.selectMessagesByConversationId(id);
+        String firstUserMsg = messages.stream()
+                .filter(m -> "user".equals(m.getRole()))
+                .findFirst()
+                .map(AiMessage::getContent)
+                .orElse(conv.getTitle());
+
+        String title = generateTitleFromMessage(firstUserMsg);
+
+        AiConversation update = new AiConversation();
+        update.setConversationId(id);
+        update.setTitle(title);
+        update.setUpdateTime(DateUtils.getNowDate());
+        conversationMapper.updateConversation(update);
+
+        return title;
+    }
+
+    private String generateTitleFromMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "新会话";
+        }
+        String cleaned = message.replaceAll("[\\n\\r]", " ").replaceAll("\\s+", " ").trim();
+        if (cleaned.length() <= 20) {
+            return cleaned;
+        }
+        int cut = Math.min(cleaned.length(), 20);
+        while (cut > 10 && cleaned.charAt(cut) != ' ' && !isCjkBoundary(cleaned, cut)) {
+            cut--;
+        }
+        if (cut <= 10) {
+            String title = cleaned.substring(0, 18).trim();
+            return title.length() < cleaned.length() ? title : cleaned.substring(0, 20).trim();
+        }
+        return cleaned.substring(0, cut).trim();
+    }
+
+    private boolean isCjkBoundary(String s, int idx) {
+        if (idx <= 0 || idx >= s.length()) return false;
+        char c = s.charAt(idx - 1);
+        return Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN;
+    }
+
     // ==================== 消息发送 ====================
 
     @Override
@@ -79,6 +131,7 @@ public class AiChatServiceImpl implements IAiChatService {
         Long userId = SecurityUtils.getUserId();
         Date now = DateUtils.getNowDate();
         Long conversationId;
+        String title;
 
         if (dto.getConversationId() != null) {
             AiConversation conversation = conversationMapper.selectConversationById(dto.getConversationId());
@@ -86,13 +139,11 @@ public class AiChatServiceImpl implements IAiChatService {
                 throw new ServiceException("会话不存在");
             }
             conversationId = dto.getConversationId();
+            title = conversation.getTitle();
         } else {
+            title = generateTitleFromMessage(dto.getMessage());
             AiConversation conversation = new AiConversation();
             conversation.setUserId(userId);
-            String title = dto.getMessage();
-            if (title.length() > 30) {
-                title = title.substring(0, 30);
-            }
             conversation.setTitle(title);
             conversation.setAgentType(dto.getAgentType());
             conversation.setStatus(1);
@@ -126,6 +177,7 @@ public class AiChatServiceImpl implements IAiChatService {
 
         ChatResponseDto response = new ChatResponseDto();
         response.setConversationId(conversationId);
+        response.setTitle(title);
         response.setMessageId(aiMessage.getMessageId());
         response.setContent(reply);
         response.setRole("assistant");

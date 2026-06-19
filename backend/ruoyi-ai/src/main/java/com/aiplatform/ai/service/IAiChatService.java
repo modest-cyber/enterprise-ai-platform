@@ -33,4 +33,10 @@ public interface IAiChatService {
 
     /** 发送消息并获取AI回复 */
     ChatResponseDto chat(ChatRequestDto dto);
+
+    /** 重命名会话 */
+    void renameConversation(Long id, String title);
+
+    /** 重新生成会话标题 */
+    String generateTitle(Long id);
 }

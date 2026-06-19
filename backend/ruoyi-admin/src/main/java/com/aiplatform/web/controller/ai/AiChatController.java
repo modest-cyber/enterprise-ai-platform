@@ -1,6 +1,7 @@
 package com.aiplatform.web.controller.ai;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -84,6 +85,29 @@ public class AiChatController extends BaseController {
     public AjaxResult getMessages(@PathVariable Long id) {
         List<AiMessage> messages = chatService.listMessages(id);
         return AjaxResult.success(messages);
+    }
+
+    /**
+     * 重命名会话
+     */
+    @PreAuthorize("@ss.hasPermi('ai:chat:edit')")
+    @Log(title = "AI会话重命名", businessType = BusinessType.UPDATE)
+    @PutMapping("/conversations/{id}/rename")
+    public AjaxResult renameConversation(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String title = body.get("title");
+        chatService.renameConversation(id, title);
+        return success();
+    }
+
+    /**
+     * 重新生成会话标题
+     */
+    @PreAuthorize("@ss.hasPermi('ai:chat:edit')")
+    @Log(title = "AI会话标题生成", businessType = BusinessType.UPDATE)
+    @PostMapping("/conversations/{id}/generate-title")
+    public AjaxResult generateTitle(@PathVariable Long id) {
+        String title = chatService.generateTitle(id);
+        return success(title);
     }
 
     // ==================== 消息发送 ====================

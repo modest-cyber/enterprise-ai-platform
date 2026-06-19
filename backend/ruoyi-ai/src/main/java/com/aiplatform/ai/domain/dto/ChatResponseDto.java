@@ -17,6 +17,9 @@ public class ChatResponseDto implements Serializable {
     /** 会话ID */
     private Long conversationId;
 
+    /** 会话标题 */
+    private String title;
+
     /** 消息ID */
     private Long messageId;
 
