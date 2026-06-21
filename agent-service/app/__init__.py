@@ -25,6 +25,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    @app.get("/health")
+    async def root_health():
+        return {"status": "ok"}
+
     from api.routes import router
     app.include_router(router, prefix="/api/v1")
 

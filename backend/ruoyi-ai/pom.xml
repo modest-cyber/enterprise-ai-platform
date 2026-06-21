@@ -36,6 +36,12 @@
             <version>3.0.3</version>
         </dependency>
 
+        <!-- Spring WebClient（用于调用 Python FastAPI Agent） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- Apache Tika 通用文档解析 -->
         <dependency>
             <groupId>org.apache.tika</groupId>
