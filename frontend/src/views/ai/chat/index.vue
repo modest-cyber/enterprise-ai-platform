@@ -92,10 +92,12 @@
               <el-option label="代码生成" value="code" />
               <el-option label="代码审查" value="review" />
             </el-select>
+            <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
+          </div>
+          <div class="chat-input-model">
             <el-select v-model="modelId" placeholder="选择模型" style="width: 180px" size="default" clearable filterable>
               <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName" :value="m.modelId" />
             </el-select>
-            <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
           </div>
         </div>
       </div>
@@ -372,4 +374,5 @@ onMounted(() => {
 .message-time { font-size: 12px; color: var(--el-text-color-placeholder, #c0c4cc); margin-top: 4px; }
 .chat-input { padding: 16px 20px; border-top: 1px solid var(--el-border-color-light, #e8e8e8); background-color: var(--el-bg-color, #fff); }
 .chat-input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.chat-input-model { margin-left: 200px; margin-top: 8px; }
 </style>
