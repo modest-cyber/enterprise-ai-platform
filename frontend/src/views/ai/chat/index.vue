@@ -85,17 +85,16 @@
             resize="none"
           />
           <div class="chat-input-actions">
-            <el-select v-model="agentType" placeholder="Agent类型" style="width: 140px" size="default">
+            <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
               <el-option label="默认" value="" />
-              <el-option label="规划(Planner)" value="planner" />
-              <el-option label="RAG检索" value="rag" />
-              <el-option label="代码生成" value="code" />
-              <el-option label="代码审查" value="review" />
+              <el-option
+                v-for="agent in agentOptions"
+                :key="agent.agentId"
+                :label="agent.agentName"
+                :value="agent.agentType"
+              />
             </el-select>
-            <el-select v-model="modelId" placeholder="选择模型" style="width: 180px; margin-left: 12px;" size="default" clearable filterable>
-              <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName" :value="m.modelId" />
-            </el-select>
-            <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()" style="margin-left: auto;">{{ sending ? '发送中...' : '发送' }}</el-button>
+            <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
           </div>
         </div>
       </div>
@@ -109,15 +108,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
-import { listModel } from '@/api/ai/model'
+import { listEnabledAgents } from '@/api/ai/agent'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
 const messages = ref<any[]>([])
 const inputMessage = ref('')
 const agentType = ref('')
-const modelId = ref<number | null>(null)
-const modelOptions = ref<any[]>([])
+const agentOptions = ref<any[]>([])
 const sending = ref(false)
 const messageContainer = ref<HTMLElement | null>(null)
 const renameInputRef = ref<any>(null)
@@ -129,12 +127,6 @@ const conversationParams = reactive({
   pageNum: 1,
   pageSize: 50
 })
-
-function loadModelOptions() {
-  listModel({ pageNum: 1, pageSize: 1000, isEnabled: 1 }).then((response: any) => {
-    modelOptions.value = response.rows || []
-  })
-}
 
 function handleNewSession() {
   currentConversationId.value = null
@@ -175,9 +167,6 @@ async function handleSend() {
     const dto: any = {
       message: message,
       agentType: agentType.value || null
-    }
-    if (modelId.value) {
-      dto.modelId = modelId.value
     }
     if (currentConversationId.value) {
       dto.conversationId = currentConversationId.value
@@ -286,9 +275,15 @@ function formatMessage(content: string): string {
   return content.replace(/\n/g, '<br/>')
 }
 
+function fetchAgentOptions() {
+  listEnabledAgents().then((response: any) => {
+    agentOptions.value = response.data || []
+  })
+}
+
 onMounted(() => {
   fetchConversationList()
-  loadModelOptions()
+  fetchAgentOptions()
 })
 </script>
 
@@ -367,9 +362,9 @@ onMounted(() => {
 .message-text {
   padding: 12px 16px; border-radius: 8px; line-height: 1.6; font-size: 14px; word-break: break-word;
   .message-user & { background-color: var(--el-color-primary, #409eff); color: #fff; }
-  .message-ai & { background-color: var(--el-bg-color, #fff); color: var(--el-text-color-primary, #303133); box-shadow: 0 1px 4px var(--el-border-color-light, rgba(0, 0, 0, 0.08)); }
+  .message-ai & { background-color: var(--el-bg-color, #fff); color: var(--el-text-color-primary, #303133); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
 }
 .message-time { font-size: 12px; color: var(--el-text-color-placeholder, #c0c4cc); margin-top: 4px; }
 .chat-input { padding: 16px 20px; border-top: 1px solid var(--el-border-color-light, #e8e8e8); background-color: var(--el-bg-color, #fff); }
-.chat-input-actions { display: flex; align-items: center; margin-top: 12px; }
+.chat-input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 </style>

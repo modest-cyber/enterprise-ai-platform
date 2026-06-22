@@ -118,6 +118,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         delete from agent_config where agent_id = #{agentId}
     </delete>
 
+    <select id="selectEnabledAgents" resultMap="AgentConfigResult">
+        <include refid="selectAgentVo"/>
+        where status = 1
+        order by agent_type, create_time desc
+    </select>
+
     <delete id="deleteAgentByIds" parameterType="Long">
         delete from agent_config where agent_id in
         <foreach collection="array" item="agentId" open="(" separator="," close=")">

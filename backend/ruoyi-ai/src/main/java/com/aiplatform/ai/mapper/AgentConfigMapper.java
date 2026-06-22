@@ -27,4 +27,6 @@ public interface AgentConfigMapper
     int deleteAgentById(Long agentId);
 
     int deleteAgentByIds(Long[] agentIds);
+
+    List<AgentConfig> selectEnabledAgents();
 }

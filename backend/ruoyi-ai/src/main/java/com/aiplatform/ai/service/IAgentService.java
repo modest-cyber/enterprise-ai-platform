@@ -30,6 +30,11 @@ public interface IAgentService {
      */
     List<AgentConfig> selectAgentList(AgentConfig agent);
 
+    /**
+     * 查询所有启用的 Agent（不分页，用于下拉列表）
+     */
+    List<AgentConfig> selectEnabledAgents();
+
     // ==================== CRUD ====================
 
     /**

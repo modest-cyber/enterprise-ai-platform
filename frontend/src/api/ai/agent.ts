@@ -44,3 +44,8 @@ export function getTaskStatus(taskId) {
 export function cancelTask(taskId) {
   return request({ url: '/ai/agent/cancel/' + taskId, method: 'post' })
 }
+
+// 获取所有启用的Agent（下拉列表用）
+export function listEnabledAgents() {
+  return request({ url: '/ai/agent/enabled', method: 'get' })
+}
