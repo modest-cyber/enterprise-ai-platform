@@ -193,7 +193,12 @@ const data = reactive({
     toolName: [{ required: true, message: '工具标识不能为空', trigger: 'blur' }],
     displayName: [{ required: true, message: '显示名称不能为空', trigger: 'blur' }],
     toolType: [{ required: true, message: '工具类型不能为空', trigger: 'change' }],
-    inputSchema: [{ required: true, message: '输入Schema不能为空', trigger: 'blur' }]
+    inputSchema: [
+      { required: true, message: '输入Schema不能为空', trigger: 'blur' },
+      { validator: validateJson, trigger: 'blur' }
+    ],
+    outputSchema: [{ validator: validateJson, trigger: 'blur' }],
+    authConfig: [{ validator: validateJson, trigger: 'blur' }]
   }
 })
 const { queryParams, form, rules } = toRefs(data)
@@ -202,6 +207,13 @@ const invokeData = reactive({
   invokeForm: {} as any
 })
 const { invokeForm } = toRefs(invokeData)
+
+// JSON 格式校验
+function validateJson(_rule: any, value: string, callback: any) {
+  if (!value) return callback()
+  try { JSON.parse(value); callback() }
+  catch { callback(new Error('请输入有效的JSON格式')) }
+}
 
 function getList() {
   loading.value = true
@@ -235,6 +247,19 @@ function handleUpdate(row: any) {
 function submitForm() {
   proxy.$refs['toolRef'].validate((valid: boolean) => {
     if (valid) {
+      // 提交前二次校验 JSON 字段格式
+      const jsonFields = [
+        { key: 'inputSchema', label: '输入Schema' },
+        { key: 'outputSchema', label: '输出Schema' },
+        { key: 'authConfig', label: '认证配置' }
+      ]
+      for (const { key, label } of jsonFields) {
+        const val = form.value[key]
+        if (val) {
+          try { JSON.parse(val) }
+          catch { proxy.$modal.msgError(label + ' 格式错误，请输入有效的JSON'); return }
+        }
+      }
       if (form.value.toolId != undefined) {
         updateTool(form.value).then(() => { proxy.$modal.msgSuccess('修改成功'); open.value = false; getList() })
       } else {
