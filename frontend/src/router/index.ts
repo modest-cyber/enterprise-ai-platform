@@ -191,6 +191,45 @@ export const dynamicRoutes = [
         meta: { title: '知识检索', activeMenu: '/ai/knowledge' }
       }
     ]
+  },
+  {
+    path: '/ai/agent',
+    component: Layout,
+    permissions: ['ai:agent:query'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/ai/agent/index.vue'),
+        name: 'AiAgent',
+        meta: { title: 'Agent管理', icon: 'cpu' }
+      }
+    ]
+  },
+  {
+    path: '/ai/model',
+    component: Layout,
+    permissions: ['ai:model:query'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/ai/model/index.vue'),
+        name: 'AiModel',
+        meta: { title: '模型配置', icon: 'cpu' }
+      }
+    ]
+  },
+  {
+    path: '/ai/tool',
+    component: Layout,
+    permissions: ['ai:tool:query'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/ai/tool/index.vue'),
+        name: 'AiTool',
+        meta: { title: '工具管理', icon: 'tool' }
+      }
+    ]
   }
 ]
 
