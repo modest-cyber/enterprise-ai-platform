@@ -43,7 +43,9 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="Agent名称" align="center" prop="agentName" :show-overflow-tooltip="true" />
       <el-table-column label="Agent类型" align="center" prop="agentType" width="100" />
-      <el-table-column label="关联模型ID" align="center" prop="modelId" width="100" />
+      <el-table-column label="关联模型" align="center" width="140">
+          <template #default="scope"><span>{{ getModelName(scope.row.modelId) }}</span></template>
+        </el-table-column>
       <el-table-column label="温度" align="center" prop="temperature" width="80" />
       <el-table-column label="最大迭代" align="center" prop="maxIterations" width="90" />
       <el-table-column label="状态" align="center" prop="status" width="80">
@@ -93,8 +95,10 @@
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="关联模型ID" prop="modelId">
-              <el-input-number v-model="form.modelId" :min="1" style="width:100%" />
+            <el-form-item label="关联模型" prop="modelId">
+              <el-select v-model="form.modelId" placeholder="请选择模型" clearable filterable style="width:100%">
+                <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName + ' (' + m.modelName + ')'" :value="m.modelId" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -195,6 +199,7 @@
 <script setup lang="ts" name="Agent">
 import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
 import { listAgent, getAgent, addAgent, updateAgent, delAgent, executeAgent, submitAgent, getTaskStatus, cancelTask } from '@/api/ai/agent'
+import { listModel } from '@/api/ai/model'
 const { proxy } = getCurrentInstance() as any
 
 const agentList = ref([])
@@ -206,6 +211,7 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref('')
+const modelOptions = ref<any[]>([])
 
 // 执行相关
 const executeOpen = ref(false)
@@ -239,6 +245,18 @@ const taskData = reactive({
   taskForm: {} as any
 })
 const { taskForm } = toRefs(taskData)
+
+// 获取模型选项列表
+function getModelOptions() {
+  listModel({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
+    modelOptions.value = response.rows || []
+  })
+}
+// 根据模型ID获取显示名称
+function getModelName(modelId: number) {
+  const m = modelOptions.value.find((item: any) => item.modelId === modelId)
+  return m ? m.displayName : (modelId || '-')
+}
 
 function getList() {
   loading.value = true
@@ -335,4 +353,5 @@ function cancelTaskHandler() {
 }
 
 getList()
+getModelOptions()
 </script>
