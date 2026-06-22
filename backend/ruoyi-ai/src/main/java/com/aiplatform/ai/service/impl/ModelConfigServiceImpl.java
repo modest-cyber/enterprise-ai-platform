@@ -87,27 +87,37 @@ public class ModelConfigServiceImpl implements IModelConfigService {
         log.info("测试模型连通性, modelId={}, modelName={}, provider={}", modelId, model.getModelName(), model.getProvider());
 
         try {
-            String body = "{\"model\":\"" + escapeJson(model.getModelName()) + "\","
-                    + "\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],"
-                    + "\"max_tokens\":1}";
-
-            String url = model.getBaseUrl();
-            if (!url.endsWith("/")) {
-                url += "/";
+            String provider = model.getProvider() != null ? model.getProvider().toLowerCase() : "";
+            String baseUrl = model.getBaseUrl();
+            if (!baseUrl.endsWith("/")) {
+                baseUrl += "/";
             }
-            url += "v1/chat/completions";
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + model.getApiKey())
-                    .timeout(Duration.ofSeconds(30))
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
+            HttpRequest request;
+            if ("ollama".equals(provider)) {
+                String url = baseUrl + "api/tags";
+                request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .timeout(Duration.ofSeconds(30))
+                        .GET()
+                        .build();
+            } else {
+                String url = baseUrl + "v1/chat/completions";
+                String body = "{\"model\":\"" + escapeJson(model.getModelName()) + "\","
+                        + "\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],"
+                        + "\"max_tokens\":1}";
+                request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + model.getApiKey())
+                        .timeout(Duration.ofSeconds(30))
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
+            }
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             boolean success = response.statusCode() == 200;
-            log.info("模型连通性测试结果, modelId={}, status={}, success={}", modelId, response.statusCode(), success);
+            log.info("模型连通性测试结果, modelId={}, provider={}, status={}, success={}", modelId, provider, response.statusCode(), success);
             return success;
         } catch (IOException | InterruptedException e) {
             log.error("模型连通性测试失败, modelId={}", modelId, e);
