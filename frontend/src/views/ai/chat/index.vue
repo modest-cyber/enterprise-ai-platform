@@ -92,7 +92,7 @@
               <el-option label="代码生成" value="code" />
               <el-option label="代码审查" value="review" />
             </el-select>
-            <el-select v-model="modelId" placeholder="选择模型" style="width: 180px; margin-left: 200px;" size="default" clearable filterable>
+            <el-select v-model="modelId" placeholder="选择模型" style="width: 180px; margin-left: 12px;" size="default" clearable filterable>
               <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName" :value="m.modelId" />
             </el-select>
             <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()" style="margin-left: auto;">{{ sending ? '发送中...' : '发送' }}</el-button>
