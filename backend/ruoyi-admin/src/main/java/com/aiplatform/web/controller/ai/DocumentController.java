@@ -19,7 +19,7 @@ import com.aiplatform.common.core.controller.BaseController;
 import com.aiplatform.common.core.domain.AjaxResult;
 import com.aiplatform.common.enums.BusinessType;
 import com.aiplatform.common.exception.ServiceException;
-import lombok.extern.slf4j.Slf4j;
+
 
 /**
  * 文档处理控制器
