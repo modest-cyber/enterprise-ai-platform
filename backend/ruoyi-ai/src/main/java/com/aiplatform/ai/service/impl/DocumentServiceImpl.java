@@ -32,8 +32,23 @@ public class DocumentServiceImpl implements IDocumentService {
 
     private static final Set<String> ALLOWED_TYPES = Set.of("txt", "pdf", "md", "docx", "xlsx", "html");
 
+    /** 服务器本地存储根目录 */
+    private static final String KB_UPLOAD_ROOT = "upload/ai/kb/";
+
     private String getUploadBaseDir() {
-        return RuoYiConfig.getProfile() + "/ai/kb/";
+        // 使用应用工作目录 + upload/ai/kb/，文件存储在服务器本地
+        return System.getProperty("user.dir") + "/" + KB_UPLOAD_ROOT;
+    }
+
+    /** 解析文件完整路径（兼容旧绝对路径和新相对路径） */
+    private String resolveFullPath(String filePath) {
+        if (filePath == null) return null;
+        // 已是绝对路径（如 F:/... 或 /home/...），直接返回
+        if (Paths.get(filePath).isAbsolute() || filePath.matches("^[A-Za-z]:[/\\\\].*")) {
+            return filePath;
+        }
+        // 相对路径，拼接工作目录前缀
+        return System.getProperty("user.dir") + "/" + filePath;
     }
 
     @Autowired
@@ -68,8 +83,8 @@ public class DocumentServiceImpl implements IDocumentService {
             String savedPath = uploadDir + newFileName;
             file.transferTo(new File(savedPath));
 
-            // 存储相对路径
-            String relativePath = "/ai/kb/" + kbId + "/" + dateDir + "/" + newFileName;
+            // 存储相对路径（相对于user.dir）
+            String relativePath = KB_UPLOAD_ROOT + kbId + "/" + dateDir + "/" + newFileName;
 
             String contentText = extractText(fileType, savedPath);
 
@@ -238,7 +253,7 @@ public class DocumentServiceImpl implements IDocumentService {
             // Step 3: 文本切块 (50%)
             String contentText = doc.getContentText();
             if (contentText == null || contentText.isEmpty()) {
-                contentText = extractText(doc.getFileType(), doc.getFilePath());
+                contentText = extractText(doc.getFileType(), resolveFullPath(doc.getFilePath()));
                 doc.setContentText(contentText);
             }
             List<String> chunks = chunkText(contentText, 512, 50);
@@ -300,7 +315,7 @@ public class DocumentServiceImpl implements IDocumentService {
         }
         // 未提取内容时重新读取
         try {
-            return extractText(doc.getFileType(), doc.getFilePath());
+            return extractText(doc.getFileType(), resolveFullPath(doc.getFilePath()));
         } catch (Exception e) {
             log.error("读取文档内容失败: docId={}", documentId, e);
             throw new ServiceException("读取文档内容失败: " + e.getMessage());
