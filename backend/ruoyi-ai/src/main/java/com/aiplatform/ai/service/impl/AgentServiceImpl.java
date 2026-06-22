@@ -51,6 +51,11 @@ public class AgentServiceImpl implements IAgentService {
         return agentConfigMapper.selectAgentList(agent);
     }
 
+    @Override
+    public List<AgentConfig> selectEnabledAgents() {
+        return agentConfigMapper.selectEnabledAgents();
+    }
+
     // ==================== CRUD ====================
 
     @Override

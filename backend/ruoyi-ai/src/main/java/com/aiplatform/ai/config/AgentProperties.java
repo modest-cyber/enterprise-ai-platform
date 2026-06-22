@@ -9,12 +9,18 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "ai.agent")
 public class AgentProperties {
 
-    private String baseUrl = "http://localhost:8000";
+    private String baseUrl;
 
-    private String apiPrefix = "/api";
+    private String apiPrefix;
 
-    private int connectTimeout = 30;
+    private int connectTimeout;
 
-    private int readTimeout = 30;
+    private int readTimeout;
+
+    private String modelName;
+
+    private Double temperature;
+
+    private Integer maxTokens;
 
 }

@@ -20,8 +20,6 @@ public interface AiModelMapper
 
     List<AiModel> selectEnabledModels();
 
-    AiModel selectDefaultModel();
-
     int insertModel(AiModel model);
 
     int updateModel(AiModel model);
@@ -29,6 +27,4 @@ public interface AiModelMapper
     int deleteModelById(Long modelId);
 
     int deleteModelByIds(Long[] modelIds);
-
-    int setDefaultOff();
 }

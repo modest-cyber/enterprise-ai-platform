@@ -85,12 +85,14 @@
             resize="none"
           />
           <div class="chat-input-actions">
-            <el-select v-model="agentType" placeholder="Agent类型" style="width: 140px" size="default">
+            <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
               <el-option label="默认" value="" />
-              <el-option label="规划(Planner)" value="planner" />
-              <el-option label="RAG检索" value="rag" />
-              <el-option label="代码生成" value="code" />
-              <el-option label="代码审查" value="review" />
+              <el-option
+                v-for="agent in agentOptions"
+                :key="agent.agentId"
+                :label="agent.agentName"
+                :value="agent.agentType"
+              />
             </el-select>
             <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
           </div>
@@ -106,12 +108,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
+import { listEnabledAgents } from '@/api/ai/agent'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
 const messages = ref<any[]>([])
 const inputMessage = ref('')
 const agentType = ref('')
+const agentOptions = ref<any[]>([])
 const sending = ref(false)
 const messageContainer = ref<HTMLElement | null>(null)
 const renameInputRef = ref<any>(null)
@@ -271,8 +275,15 @@ function formatMessage(content: string): string {
   return content.replace(/\n/g, '<br/>')
 }
 
+function fetchAgentOptions() {
+  listEnabledAgents().then((response: any) => {
+    agentOptions.value = response.data || []
+  })
+}
+
 onMounted(() => {
   fetchConversationList()
+  fetchAgentOptions()
 })
 </script>
 

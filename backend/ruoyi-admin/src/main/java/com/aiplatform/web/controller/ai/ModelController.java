@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 模型配置管理
  * <p>
  * 管理所有 LLM 模型配置，支持多 Provider（OpenAI/DeepSeek/Qwen/Ollama）和
- * 多模型类型（chat/embedding/rerank）。通过 is_default 字段标识默认模型。
+ * 多模型类型（chat/embedding/rerank）。
  *
  * @author aiplatform
  */
@@ -100,20 +100,9 @@ public class ModelController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('ai:model:query')")
     @Log(title = "模型连通性测试", businessType = BusinessType.OTHER)
-    @PostMapping("/test/{modelId}")
+    @GetMapping("/test/{modelId}")
     public AjaxResult testConnection(@PathVariable Long modelId) {
         boolean connected = modelConfigService.testConnection(modelId);
         return connected ? success("模型连通性测试通过") : error("模型连通性测试失败");
-    }
-
-    /**
-     * 设置默认模型
-     */
-    @PreAuthorize("@ss.hasPermi('ai:model:edit')")
-    @Log(title = "模型管理", businessType = BusinessType.UPDATE)
-    @PutMapping("/set-default/{modelId}")
-    public AjaxResult setDefault(@PathVariable Long modelId) {
-        modelConfigService.setDefaultModel(modelId);
-        return success("默认模型设置成功");
     }
 }

@@ -90,6 +90,16 @@ public class AgentController extends BaseController {
     }
 
     /**
+     * 获取所有启用的 Agent（不分页，用于下拉列表）
+     */
+    @PreAuthorize("@ss.hasPermi('ai:agent:query')")
+    @GetMapping("/enabled")
+    public AjaxResult enabled() {
+        List<AgentConfig> list = agentService.selectEnabledAgents();
+        return success(list);
+    }
+
+    /**
      * 同步执行 Agent 任务
      */
     @PreAuthorize("@ss.hasPermi('ai:agent:execute')")

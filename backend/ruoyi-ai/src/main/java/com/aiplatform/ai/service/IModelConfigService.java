@@ -7,7 +7,6 @@ import com.aiplatform.ai.domain.AiModel;
  * 模型配置服务 —— 管理LLM模型配置信息
  * <p>
  * 支持多Provider（OpenAI/DeepSeek/Qwen/Ollama），多模型类型（chat/embedding/rerank）。
- * 通过 is_default 字段标识默认模型，系统同时只有一个默认模型。
  * ApiKey 以加密形式存储，testConnection() 用于验证模型连通性。
  *
  * @author aiplatform
@@ -28,11 +27,6 @@ public interface IModelConfigService {
      * 查询所有已启用的模型（用于下拉选择）
      */
     List<AiModel> selectEnabledModels();
-
-    /**
-     * 查询默认模型（is_default=1）
-     */
-    AiModel selectDefaultModel();
 
     /**
      * 新增模型配置
@@ -56,12 +50,4 @@ public interface IModelConfigService {
      * @return true-连接成功，false-连接失败
      */
     boolean testConnection(Long modelId);
-
-    /**
-     * 设置默认模型（将其他模型 is_default 置为0，将目标模型置为1）
-     *
-     * @param modelId 目标模型ID
-     * @return 影响行数
-     */
-    int setDefaultModel(Long modelId);
 }

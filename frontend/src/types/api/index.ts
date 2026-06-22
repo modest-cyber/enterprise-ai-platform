@@ -27,3 +27,8 @@ export * from "./monitor/online";
 
 // 代码生成模块
 export * from "./tool/gen";
+
+// AI 模块
+export * from "./ai/agent";
+export * from "./ai/model";
+export * from "./ai/tool";

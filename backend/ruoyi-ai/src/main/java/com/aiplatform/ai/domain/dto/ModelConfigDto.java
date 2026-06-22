@@ -62,9 +62,6 @@ public class ModelConfigDto {
     @DecimalMax(value = "2.0", message = "温度不能大于2")
     private Double temperature;
 
-    /** 是否默认模型：0-否，1-是 */
-    private Integer isDefault;
-
     /** 是否启用：1-是，0-否 */
     private Integer isEnabled;
 

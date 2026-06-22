@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
  * 模型配置服务实现 —— 管理 LLM 模型配置 CRUD
  * <p>
  * 支持多 Provider（OpenAI/DeepSeek/Qwen/Ollama），多模型类型（chat/embedding/rerank）。
- * 通过 is_default 字段标识默认模型，系统同时只有一个默认模型。
  * 基础入参非空校验由 Controller 层 DTO + @Valid 完成，Service 只保留业务规则。
  *
  * @author aiplatform
@@ -58,11 +57,6 @@ public class ModelConfigServiceImpl implements IModelConfigService {
         return aiModelMapper.selectEnabledModels();
     }
 
-    @Override
-    public AiModel selectDefaultModel() {
-        return aiModelMapper.selectDefaultModel();
-    }
-
     // ==================== CRUD ====================
 
     @Override
@@ -93,53 +87,42 @@ public class ModelConfigServiceImpl implements IModelConfigService {
         log.info("测试模型连通性, modelId={}, modelName={}, provider={}", modelId, model.getModelName(), model.getProvider());
 
         try {
-            String body = "{\"model\":\"" + escapeJson(model.getModelName()) + "\","
-                    + "\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],"
-                    + "\"max_tokens\":1}";
-
-            String url = model.getBaseUrl();
-            if (!url.endsWith("/")) {
-                url += "/";
+            String provider = model.getProvider() != null ? model.getProvider().toLowerCase() : "";
+            String baseUrl = model.getBaseUrl();
+            if (!baseUrl.endsWith("/")) {
+                baseUrl += "/";
             }
-            url += "v1/chat/completions";
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + model.getApiKey())
-                    .timeout(Duration.ofSeconds(30))
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
+            HttpRequest request;
+            if ("ollama".equals(provider)) {
+                String url = baseUrl + "api/tags";
+                request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .timeout(Duration.ofSeconds(30))
+                        .GET()
+                        .build();
+            } else {
+                String url = baseUrl + "v1/chat/completions";
+                String body = "{\"model\":\"" + escapeJson(model.getModelName()) + "\","
+                        + "\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],"
+                        + "\"max_tokens\":1}";
+                request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + model.getApiKey())
+                        .timeout(Duration.ofSeconds(30))
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
+            }
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             boolean success = response.statusCode() == 200;
-            log.info("模型连通性测试结果, modelId={}, status={}, success={}", modelId, response.statusCode(), success);
+            log.info("模型连通性测试结果, modelId={}, provider={}, status={}, success={}", modelId, provider, response.statusCode(), success);
             return success;
         } catch (IOException | InterruptedException e) {
             log.error("模型连通性测试失败, modelId={}", modelId, e);
             return false;
         }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int setDefaultModel(Long modelId) {
-        AiModel model = aiModelMapper.selectModelById(modelId);
-        if (model == null) {
-            throw new ServiceException("模型不存在, modelId=" + modelId);
-        }
-        log.info("设置默认模型, modelId={}, modelName={}", modelId, model.getModelName());
-
-        // 1. 将所有模型的 is_default 置为 0
-        aiModelMapper.setDefaultOff();
-
-        // 2. 将目标模型的 is_default 置为 1
-        model.setIsDefault(1);
-        model.setUpdateBy(SecurityUtils.getUsername());
-        int rows = aiModelMapper.updateModel(model);
-
-        log.info("默认模型设置完成, modelId={}, rows={}", modelId, rows);
-        return rows;
     }
 
     private String escapeJson(String s) {
