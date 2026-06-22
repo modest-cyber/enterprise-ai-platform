@@ -345,4 +345,16 @@ public class DocumentServiceImpl implements IDocumentService {
         stats.put("failed", failed);
         return stats;
     }
+
+    @Override
+    public KbDocument getDocument(Long documentId) {
+        return documentMapper.selectDocumentById(documentId);
+    }
+
+    @Override
+    public String getDocumentFilePath(Long documentId) {
+        KbDocument doc = documentMapper.selectDocumentById(documentId);
+        if (doc == null) throw new ServiceException("文档不存在: " + documentId);
+        return resolveFullPath(doc.getFilePath());
+    }
 }

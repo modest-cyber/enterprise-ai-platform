@@ -175,7 +175,7 @@ const previewType = ref('')
 const previewFileName = ref('')
 const previewDocId = ref<number | null>(null)
 const previewPdfUrl = computed(() => {
-  return import.meta.env.VITE_APP_BASE_API + '/ai/document/' + previewDocId.value + '/content'
+  return import.meta.env.VITE_APP_BASE_API + '/ai/document/' + previewDocId.value + '/file'
 })
 
 // ==================== 处理 ====================

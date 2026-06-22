@@ -31,4 +31,10 @@ public interface IDocumentService {
 
     /** 获取知识库文档统计 */
     Map<String, Object> getDocStats(Long kbId);
+
+    /** 根据ID获取文档 */
+    KbDocument getDocument(Long documentId);
+
+    /** 获取文档文件的服务器完整路径 */
+    String getDocumentFilePath(Long documentId);
 }
