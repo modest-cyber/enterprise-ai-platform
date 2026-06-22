@@ -7,7 +7,6 @@ class IndexRequest(BaseModel):
     doc_id: int = Field(..., description="文档ID")
     kb_id: int = Field(..., description="知识库ID")
     content: str = Field(..., description="文档全文内容", min_length=1)
-    file_path: str = Field(default="", description="文件路径（可选，用于日志）")
 
 
 class IndexResponse(BaseModel):

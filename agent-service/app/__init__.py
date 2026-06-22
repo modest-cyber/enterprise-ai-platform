@@ -32,10 +32,4 @@ def create_app() -> FastAPI:
     from api.routes import router
     app.include_router(router, prefix="/api/v1")
 
-    from api.knowledge import router as knowledge_router
-    app.include_router(knowledge_router, prefix="/api/v1/knowledge")
-
-    from api.tools import router as tools_router
-    app.include_router(tools_router, prefix="/api/v1/tools")
-
     return app
