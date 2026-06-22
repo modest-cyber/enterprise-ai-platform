@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.DashboardMapper">
+
+    <!-- Agent总数 -->
+    <select id="countAgents" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM agent_config
+    </select>
+
+    <!-- 知识库总数 -->
+    <select id="countKnowledgeBases" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM kb_knowledge
+    </select>
+
+    <!-- 文档总数（未删除） -->
+    <select id="countDocuments" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM kb_document WHERE is_delete = 0
+    </select>
+
+    <!-- 会话总数 -->
+    <select id="countConversations" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM ai_conversation
+    </select>
+
+    <!-- 近7天每日会话数 -->
+    <select id="countConversationsByDay" resultType="java.util.Map">
+        SELECT DATE(create_time) as date, COUNT(*) as count
+        FROM ai_conversation
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 最近Agent创建记录（前5条） -->
+    <select id="selectRecentAgents" resultType="java.util.Map">
+        SELECT agent_name as name, agent_type as type, create_time as createTime
+        FROM agent_config
+        ORDER BY create_time DESC
+        LIMIT 5
+    </select>
+
+    <!-- 最近知识库创建记录（前5条） -->
+    <select id="selectRecentKnowledge" resultType="java.util.Map">
+        SELECT name, kb_type as kbType, create_time as createTime
+        FROM kb_knowledge
+        ORDER BY create_time DESC
+        LIMIT 5
+    </select>
+
+    <!-- 最近会话记录（前5条） -->
+    <select id="selectRecentConversations" resultType="java.util.Map">
+        SELECT title, agent_type as agentType, create_time as createTime
+        FROM ai_conversation
+        ORDER BY create_time DESC
+        LIMIT 5
+    </select>
+
+</mapper>
