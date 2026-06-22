@@ -100,7 +100,7 @@ public class ModelController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('ai:model:query')")
     @Log(title = "模型连通性测试", businessType = BusinessType.OTHER)
-    @PostMapping("/test/{modelId}")
+    @GetMapping("/test/{modelId}")
     public AjaxResult testConnection(@PathVariable Long modelId) {
         boolean connected = modelConfigService.testConnection(modelId);
         return connected ? success("模型连通性测试通过") : error("模型连通性测试失败");

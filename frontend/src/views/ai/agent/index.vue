@@ -130,8 +130,10 @@
         <el-form-item label="系统提示词" prop="systemPrompt">
           <el-input v-model="form.systemPrompt" type="textarea" :rows="3" placeholder="请输入系统提示词" />
         </el-form-item>
-        <el-form-item label="工具JSON" prop="toolsJson">
-          <el-input v-model="form.toolsJson" type="textarea" :rows="2" placeholder='如 ["1","2"]' />
+        <el-form-item label="关联工具" prop="toolsJson">
+          <el-select v-model="form.toolIds" multiple clearable filterable placeholder="请选择工具" style="width:100%">
+            <el-option v-for="t in toolOptions" :key="t.toolId" :label="t.displayName + ' (' + t.toolName + ')'" :value="t.toolId" />
+          </el-select>
         </el-form-item>
         <el-form-item label="工作流JSON" prop="workflowJson">
           <el-input v-model="form.workflowJson" type="textarea" :rows="2" placeholder="LangGraph workflow JSON" />
@@ -200,6 +202,7 @@
 import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
 import { listAgent, getAgent, addAgent, updateAgent, delAgent, executeAgent, submitAgent, getTaskStatus, cancelTask } from '@/api/ai/agent'
 import { listModel } from '@/api/ai/model'
+import { listTool } from '@/api/ai/tool'
 const { proxy } = getCurrentInstance() as any
 
 const agentList = ref([])
@@ -212,6 +215,7 @@ const multiple = ref(true)
 const total = ref(0)
 const title = ref('')
 const modelOptions = ref<any[]>([])
+const toolOptions = ref<any[]>([])
 
 // 执行相关
 const executeOpen = ref(false)
@@ -246,6 +250,12 @@ const taskData = reactive({
 })
 const { taskForm } = toRefs(taskData)
 
+// 获取工具选项列表
+function getToolOptions() {
+  listTool({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
+    toolOptions.value = response.rows || []
+  })
+}
 // 获取模型选项列表
 function getModelOptions() {
   listModel({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
@@ -270,7 +280,7 @@ function cancel() { open.value = false; reset() }
 function reset() {
   form.value = {
     agentId: undefined, agentName: undefined, agentType: undefined, description: undefined,
-    modelId: undefined, systemPrompt: undefined, toolsJson: undefined, workflowJson: undefined,
+    modelId: undefined, systemPrompt: undefined, toolsJson: undefined, toolIds: [], workflowJson: undefined,
     maxIterations: 10, temperature: 0.7, timeoutSeconds: 300, status: 1
   }
   proxy.resetForm('agentRef')
@@ -282,14 +292,27 @@ function handleSelectionChange(selection: any[]) {
   single.value = selection.length != 1
   multiple.value = !selection.length
 }
-function handleAdd() { reset(); open.value = true; title.value = '新增Agent' }
+function handleAdd() { reset(); form.value.toolIds = []; open.value = true; title.value = '新增Agent' }
 function handleUpdate(row: any) {
   reset()
-  getAgent(row.agentId || ids.value[0]).then((response: any) => { form.value = response.data; open.value = true; title.value = '修改Agent' })
+  getAgent(row.agentId || ids.value[0]).then((response: any) => {
+    const data = response.data
+    // toolsJson 字符串转数组供多选下拉使用
+    if (data.toolsJson) {
+      try { data.toolIds = JSON.parse(data.toolsJson) } catch { data.toolIds = [] }
+    }
+    form.value = data
+    open.value = true
+    title.value = '修改Agent'
+  })
 }
 function submitForm() {
   proxy.$refs['agentRef'].validate((valid: boolean) => {
     if (valid) {
+      // 将 toolIds 数组转为 toolsJson JSON 字符串
+      form.value.toolsJson = form.value.toolIds && form.value.toolIds.length > 0
+        ? JSON.stringify(form.value.toolIds)
+        : undefined
       if (form.value.agentId != undefined) {
         updateAgent(form.value).then(() => { proxy.$modal.msgSuccess('修改成功'); open.value = false; getList() })
       } else {
@@ -354,4 +377,5 @@ function cancelTaskHandler() {
 
 getList()
 getModelOptions()
+getToolOptions()
 </script>

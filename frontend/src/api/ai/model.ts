@@ -27,7 +27,7 @@ export function delModel(ids) {
 
 // 测试模型连接
 export function testModel(id) {
-  return request({ url: '/ai/model/test/' + id, method: 'post' })
+  return request({ url: '/ai/model/test/' + id, method: 'get' })
 }
 
 // 设为默认模型
