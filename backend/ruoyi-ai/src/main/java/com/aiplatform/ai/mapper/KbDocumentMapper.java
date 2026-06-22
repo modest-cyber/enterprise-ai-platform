@@ -27,4 +27,6 @@ public interface KbDocumentMapper
     int deleteDocumentById(Long docId);
 
     int deleteDocumentByIds(Long[] docIds);
+
+    List<java.util.Map<String, Object>> countDocsByStatus(Long kbId);
 }

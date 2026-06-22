@@ -1,5 +1,7 @@
 package com.aiplatform.ai.domain;
 
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,10 +14,6 @@ import com.aiplatform.common.core.domain.BaseEntity;
 
 /**
  * 知识文档表 kb_document
- * <p>
- * 记录上传到知识库的文档，包含文件元信息、提取的文本内容和向量化状态。
- * 文档上传后异步进行文本提取→分段→Embedding→Milvus索引的四步处理链。
- * 采用逻辑删除（is_delete字段），支持文档重新索引。
  *
  * @author aiplatform
  */
@@ -28,7 +26,7 @@ public class KbDocument extends BaseEntity {
     /** 文档主键 */
     private Long docId;
 
-    /** 知识库ID（关联 kb_knowledge.kb_id） */
+    /** 知识库ID */
     @NotNull(message = "知识库ID不能为空")
     private Long kbId;
 
@@ -45,7 +43,7 @@ public class KbDocument extends BaseEntity {
     @Min(value = 0, message = "文件大小不能为负数")
     private Long fileSize;
 
-    /** 文件存储路径（磁盘或OSS完整路径） */
+    /** 文件存储路径 */
     @Size(max = 500, message = "文件路径长度不能超过500个字符")
     private String filePath;
 
@@ -55,17 +53,28 @@ public class KbDocument extends BaseEntity {
     /** 文本切分块数 */
     private Integer chunkCount;
 
-    /** Milvus向量ID列表（JSON数组，用于追踪和批量删除） */
+    /** 向量化后的向量数量 */
+    private Integer vectorCount;
+
+    /** Milvus向量ID列表 */
     private String vectorIds;
 
-    /**
-     * 文档处理状态：
-     * 0-待处理（已上传，等待异步处理）
-     * 1-处理中（正在提取文本/向量化）
-     * 2-已完成（已索引，可检索）
-     * 3-失败（处理异常，见error_msg）
-     */
+    /** 旧状态字段：0-待处理，1-处理中，2-已完成，3-失败 */
     private Integer status;
+
+    /** 处理状态：PENDING/PROCESSING/SUCCESS/FAILED */
+    private String processStatus;
+
+    /** 处理进度 0-100 */
+    private Integer processProgress;
+
+    /** 处理信息 */
+    @Size(max = 500, message = "处理信息长度不能超过500个字符")
+    private String processMessage;
+
+    /** 处理完成时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date processedTime;
 
     /** 处理失败原因 */
     @Size(max = 500, message = "错误信息长度不能超过500个字符")
@@ -84,6 +93,9 @@ public class KbDocument extends BaseEntity {
             .append("fileSize", getFileSize())
             .append("filePath", getFilePath())
             .append("chunkCount", getChunkCount())
+            .append("vectorCount", getVectorCount())
+            .append("processStatus", getProcessStatus())
+            .append("processProgress", getProcessProgress())
             .append("status", getStatus())
             .append("isDelete", getIsDelete())
             .append("createBy", getCreateBy())

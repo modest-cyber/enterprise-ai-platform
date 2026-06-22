@@ -13,8 +13,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="filePath"        column="file_path"         />
         <result property="contentText"     column="content_text"      />
         <result property="chunkCount"      column="chunk_count"       />
+        <result property="vectorCount"     column="vector_count"      />
         <result property="vectorIds"       column="vector_ids"        />
         <result property="status"          column="status"            />
+        <result property="processStatus"   column="process_status"    />
+        <result property="processProgress" column="process_progress"  />
+        <result property="processMessage"  column="process_message"   />
+        <result property="processedTime"   column="processed_time"    />
         <result property="errorMsg"        column="error_msg"         />
         <result property="isDelete"        column="is_delete"         />
         <result property="createBy"        column="create_by"         />
@@ -26,7 +31,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectDocumentVo">
         select doc_id, kb_id, file_name, file_type, file_size, file_path,
-               content_text, chunk_count, vector_ids, status, error_msg, is_delete,
+               content_text, chunk_count, vector_count, vector_ids,
+               status, process_status, process_progress, process_message, processed_time,
+               error_msg, is_delete,
                create_by, create_time, update_by, update_time, remark
         from kb_document
     </sql>
@@ -35,6 +42,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectDocumentVo"/>
         <where>
             <if test="docId != null">and doc_id = #{docId}</if>
+            <if test="isDelete != null">and is_delete = #{isDelete}</if>
         </where>
     </select>
 
@@ -45,13 +53,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="fileName != null and fileName != ''">AND file_name like concat('%', #{fileName}, '%')</if>
             <if test="fileType != null and fileType != ''">AND file_type = #{fileType}</if>
             <if test="status != null">AND status = #{status}</if>
+            <if test="processStatus != null and processStatus != ''">AND process_status = #{processStatus}</if>
         </where>
+        and is_delete = 0
         order by create_time desc
     </select>
 
     <select id="selectDocumentsByKbId" parameterType="Long" resultMap="KbDocumentResult">
         <include refid="selectDocumentVo"/>
-        where kb_id = #{kbId}
+        where kb_id = #{kbId} and is_delete = 0
         order by create_time desc
     </select>
 
@@ -60,17 +70,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where doc_id = #{docId}
     </select>
 
-    <insert id="insertDocument" parameterType="KbDocument">
+    <select id="countDocsByStatus" parameterType="Long" resultType="java.util.Map">
+        SELECT coalesce(process_status, 'PENDING') as status, COUNT(*) as count
+        FROM kb_document
+        WHERE kb_id = #{kbId} AND is_delete = 0
+        GROUP BY process_status
+    </select>
+
+    <insert id="insertDocument" parameterType="KbDocument" useGeneratedKeys="true" keyProperty="docId">
         insert into kb_document (
             <if test="kbId != null">kb_id,</if>
             <if test="fileName != null and fileName != ''">file_name,</if>
-            <if test="fileType != null and fileType != ''">file_type,</if>
+            <if test="fileType != null">file_type,</if>
             <if test="fileSize != null">file_size,</if>
             <if test="filePath != null and filePath != ''">file_path,</if>
             <if test="contentText != null">content_text,</if>
             <if test="chunkCount != null">chunk_count,</if>
+            <if test="vectorCount != null">vector_count,</if>
             <if test="vectorIds != null">vector_ids,</if>
             <if test="status != null">status,</if>
+            <if test="processStatus != null and processStatus != ''">process_status,</if>
+            <if test="processProgress != null">process_progress,</if>
+            <if test="processMessage != null and processMessage != ''">process_message,</if>
             <if test="errorMsg != null">error_msg,</if>
             <if test="isDelete != null">is_delete,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
@@ -79,13 +100,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ) values (
             <if test="kbId != null">#{kbId},</if>
             <if test="fileName != null and fileName != ''">#{fileName},</if>
-            <if test="fileType != null and fileType != ''">#{fileType},</if>
+            <if test="fileType != null">#{fileType},</if>
             <if test="fileSize != null">#{fileSize},</if>
             <if test="filePath != null and filePath != ''">#{filePath},</if>
             <if test="contentText != null">#{contentText},</if>
             <if test="chunkCount != null">#{chunkCount},</if>
+            <if test="vectorCount != null">#{vectorCount},</if>
             <if test="vectorIds != null">#{vectorIds},</if>
             <if test="status != null">#{status},</if>
+            <if test="processStatus != null and processStatus != ''">#{processStatus},</if>
+            <if test="processProgress != null">#{processProgress},</if>
+            <if test="processMessage != null and processMessage != ''">#{processMessage},</if>
             <if test="errorMsg != null">#{errorMsg},</if>
             <if test="isDelete != null">#{isDelete},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
@@ -103,8 +128,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="filePath != null">file_path = #{filePath},</if>
             <if test="contentText != null">content_text = #{contentText},</if>
             <if test="chunkCount != null">chunk_count = #{chunkCount},</if>
+            <if test="vectorCount != null">vector_count = #{vectorCount},</if>
             <if test="vectorIds != null">vector_ids = #{vectorIds},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="processStatus != null and processStatus != ''">process_status = #{processStatus},</if>
+            <if test="processProgress != null">process_progress = #{processProgress},</if>
+            <if test="processMessage != null and processMessage != ''">process_message = #{processMessage},</if>
+            <if test="processedTime != null">processed_time = #{processedTime},</if>
             <if test="errorMsg != null">error_msg = #{errorMsg},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
@@ -113,15 +143,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where doc_id = #{docId}
     </update>
 
-    <update id="deleteDocumentById" parameterType="Long">
+    <delete id="deleteDocumentById" parameterType="Long">
         update kb_document set is_delete = 1 where doc_id = #{docId}
-    </update>
+    </delete>
 
-    <update id="deleteDocumentByIds" parameterType="Long">
+    <delete id="deleteDocumentByIds" parameterType="Long">
         update kb_document set is_delete = 1 where doc_id in
         <foreach collection="array" item="docId" open="(" separator="," close=")">
             #{docId}
         </foreach>
-    </update>
+    </delete>
 
 </mapper>
