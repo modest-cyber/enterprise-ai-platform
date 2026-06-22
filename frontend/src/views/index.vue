@@ -256,7 +256,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .dashboard-container {
   padding: 4px 0;
-  background: #f5f7fa;
+  background: var(--el-bg-color-page, #f5f7fa);
   min-height: calc(100vh - 84px);
 }
 
@@ -286,13 +286,13 @@ onMounted(() => {
     }
     &__label {
       font-size: 13px;
-      color: #909399;
+      color: var(--el-text-color-secondary, #909399);
       margin-bottom: 6px;
     }
     &__value {
       font-size: 28px;
       font-weight: 700;
-      color: #303133;
+      color: var(--el-text-color-primary, #303133);
     }
     &--agent .stat-card__icon { background: linear-gradient(135deg, #409EFF, #337ECC); }
     &--knowledge .stat-card__icon { background: linear-gradient(135deg, #67C23A, #529B2E); }
@@ -308,16 +308,16 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid #EBEEF5;
+    border-bottom: 1px solid var(--el-border-color-light, #EBEEF5);
     &:last-child { border-bottom: none; }
     .service-name { font-weight: 500; min-width: 110px; }
-    .service-host { color: #909399; font-size: 12px; flex: 1; text-align: center; }
+    .service-host { color: var(--el-text-color-secondary, #909399); font-size: 12px; flex: 1; text-align: center; }
   }
 }
 
 .empty-hint {
   text-align: center;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   padding: 20px;
 }
 

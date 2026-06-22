@@ -367,7 +367,7 @@ onMounted(() => {
 .message-text {
   padding: 12px 16px; border-radius: 8px; line-height: 1.6; font-size: 14px; word-break: break-word;
   .message-user & { background-color: var(--el-color-primary, #409eff); color: #fff; }
-  .message-ai & { background-color: var(--el-bg-color, #fff); color: var(--el-text-color-primary, #303133); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+  .message-ai & { background-color: var(--el-bg-color, #fff); color: var(--el-text-color-primary, #303133); box-shadow: 0 1px 4px var(--el-border-color-light, rgba(0, 0, 0, 0.08)); }
 }
 .message-time { font-size: 12px; color: var(--el-text-color-placeholder, #c0c4cc); margin-top: 4px; }
 .chat-input { padding: 16px 20px; border-top: 1px solid var(--el-border-color-light, #e8e8e8); background-color: var(--el-bg-color, #fff); }
