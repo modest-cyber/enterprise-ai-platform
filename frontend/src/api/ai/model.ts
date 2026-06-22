@@ -29,8 +29,3 @@ export function delModel(ids) {
 export function testModel(id) {
   return request({ url: '/ai/model/test/' + id, method: 'get' })
 }
-
-// 设为默认模型
-export function setDefaultModel(id) {
-  return request({ url: '/ai/model/set-default/' + id, method: 'put' })
-}

@@ -11,7 +11,6 @@ export interface AiModel extends BaseEntity {
   modelType: string
   maxTokens: number
   temperature: number
-  isDefault: number
   isEnabled: number
 }
 
@@ -26,7 +25,6 @@ export interface ModelConfigDto {
   modelType: string
   maxTokens: number
   temperature: number
-  isDefault: number
   isEnabled: number
   remark?: string
 }

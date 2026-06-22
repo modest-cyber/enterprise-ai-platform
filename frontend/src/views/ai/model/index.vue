@@ -50,12 +50,6 @@
       <el-table-column label="显示名称" align="center" prop="displayName" :show-overflow-tooltip="true" />
       <el-table-column label="提供商" align="center" prop="provider" width="90" />
       <el-table-column label="模型类型" align="center" prop="modelType" width="100" />
-      <el-table-column label="默认" align="center" prop="isDefault" width="70">
-        <template #default="scope">
-          <el-tag v-if="scope.row.isDefault === 1" type="success">默认</el-tag>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
       <el-table-column label="状态" align="center" prop="isEnabled" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.isEnabled === 1 ? 'success' : 'danger'">{{ scope.row.isEnabled === 1 ? '启用' : '停用' }}</el-tag>
@@ -69,7 +63,6 @@
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['ai:model:edit']">编辑</el-button>
           <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['ai:model:remove']">删除</el-button>
           <el-button link type="primary" icon="Connection" @click="handleTest(scope.row)" v-hasPermi="['ai:model:query']">测试连接</el-button>
-          <el-button link type="primary" icon="Star" @click="handleSetDefault(scope.row)" v-hasPermi="['ai:model:edit']" v-if="scope.row.isDefault !== 1">设为默认</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -130,18 +123,9 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="默认模型">
-              <el-switch v-model="form.isDefault" :active-value="1" :inactive-value="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="启用状态">
-              <el-switch v-model="form.isEnabled" :active-value="1" :inactive-value="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="启用状态">
+          <el-switch v-model="form.isEnabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
         </el-form-item>
@@ -158,7 +142,7 @@
 
 <script setup lang="ts" name="Model">
 import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
-import { listModel, getModel, addModel, updateModel, delModel, testModel, setDefaultModel } from '@/api/ai/model'
+import { listModel, getModel, addModel, updateModel, delModel, testModel } from '@/api/ai/model'
 const { proxy } = getCurrentInstance() as any
 
 const modelList = ref([])
@@ -199,7 +183,7 @@ function reset() {
   form.value = {
     modelId: undefined, modelName: undefined, displayName: undefined, provider: undefined,
     apiKey: undefined, baseUrl: undefined, modelType: undefined, maxTokens: 4096,
-    temperature: 0.7, isDefault: 0, isEnabled: 1, remark: undefined
+    temperature: 0.7, isEnabled: 1, remark: undefined
   }
   proxy.resetForm('modelRef')
 }
@@ -240,13 +224,6 @@ function handleTest(row: any) {
   }).catch(() => {
     proxy.$modal.msgError('连接失败')
   })
-}
-
-// 设为默认
-function handleSetDefault(row: any) {
-  proxy.$modal.confirm('确认将模型"' + row.displayName + '"设为默认？').then(() => {
-    return setDefaultModel(row.modelId)
-  }).then(() => { getList(); proxy.$modal.msgSuccess('设置成功') }).catch(() => {})
 }
 
 getList()

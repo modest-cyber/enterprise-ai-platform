@@ -13,8 +13,8 @@ import com.aiplatform.common.core.domain.BaseEntity;
  * AI模型配置表 ai_model
  * <p>
  * 管理所有LLM模型配置，支持多Provider（OpenAI/DeepSeek/Qwen/Ollama）和多模型类型（chat/embedding/rerank）。
- * 每个模型包含API Key、Base URL、温度等参数。系统同时只能有一个默认模型（is_default=1）。
- * 模型配置由ModelConfigService统一管理，ChatService和AgentService通过默认模型调用LLM。
+ * 每个模型包含API Key、Base URL、温度等参数。
+ * 模型配置由ModelConfigService统一管理，ChatService和AgentService通过选择的模型调用LLM。
  *
  * @author aiplatform
  */
@@ -63,9 +63,6 @@ public class AiModel extends BaseEntity {
     /** 默认温度参数（0-2） */
     private Double temperature;
 
-    /** 是否默认模型：0-否，1-是（系统同时只有一个is_default=1） */
-    private Integer isDefault;
-
     /** 是否启用：1-是，0-否 */
     private Integer isEnabled;
 
@@ -79,7 +76,6 @@ public class AiModel extends BaseEntity {
             .append("modelType", getModelType())
             .append("maxTokens", getMaxTokens())
             .append("temperature", getTemperature())
-            .append("isDefault", getIsDefault())
             .append("isEnabled", getIsEnabled())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())

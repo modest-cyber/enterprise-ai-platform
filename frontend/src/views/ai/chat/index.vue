@@ -92,6 +92,9 @@
               <el-option label="代码生成" value="code" />
               <el-option label="代码审查" value="review" />
             </el-select>
+            <el-select v-model="modelId" placeholder="选择模型" style="width: 180px" size="default" clearable filterable>
+              <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName" :value="m.modelId" />
+            </el-select>
             <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
           </div>
         </div>
@@ -106,12 +109,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
+import { listModel } from '@/api/ai/model'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
 const messages = ref<any[]>([])
 const inputMessage = ref('')
 const agentType = ref('')
+const modelId = ref<number | null>(null)
+const modelOptions = ref<any[]>([])
 const sending = ref(false)
 const messageContainer = ref<HTMLElement | null>(null)
 const renameInputRef = ref<any>(null)
@@ -123,6 +129,12 @@ const conversationParams = reactive({
   pageNum: 1,
   pageSize: 50
 })
+
+function loadModelOptions() {
+  listModel({ pageNum: 1, pageSize: 1000, isEnabled: 1 }).then((response: any) => {
+    modelOptions.value = response.rows || []
+  })
+}
 
 function handleNewSession() {
   currentConversationId.value = null
@@ -163,6 +175,9 @@ async function handleSend() {
     const dto: any = {
       message: message,
       agentType: agentType.value || null
+    }
+    if (modelId.value) {
+      dto.modelId = modelId.value
     }
     if (currentConversationId.value) {
       dto.conversationId = currentConversationId.value
@@ -273,6 +288,7 @@ function formatMessage(content: string): string {
 
 onMounted(() => {
   fetchConversationList()
+  loadModelOptions()
 })
 </script>
 
