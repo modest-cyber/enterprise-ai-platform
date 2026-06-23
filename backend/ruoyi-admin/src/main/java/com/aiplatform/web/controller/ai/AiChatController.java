@@ -110,10 +110,15 @@ public class AiChatController extends BaseController {
         return success(title);
     }
 
-    // ==================== 消息发送 ====================
+    // ==================== 消息发送（已废弃，流式聊天已迁移至 FastAPI /api/v1/chat/stream） ====================
 
+    /**
+     * @deprecated 流式聊天已迁移至 FastAPI {@code POST /api/v1/chat/stream}，
+     *             前端请直接连接 FastAPI SSE 端点。
+     */
+    @Deprecated
     @PreAuthorize("@ss.hasPermi('ai:chat:send')")
-    @Log(title = "AI聊天", businessType = BusinessType.OTHER)
+    @Log(title = "AI聊天（废弃）", businessType = BusinessType.OTHER)
     @PostMapping("/send")
     public AjaxResult send(@Valid @RequestBody ChatRequestDto dto) {
         ChatResponseDto response = chatService.chat(dto);

@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.filter.CorsFilter;
 import com.aiplatform.framework.config.properties.PermitAllUrlProperties;
+import com.aiplatform.framework.security.filter.InternalTokenFilter;
 import com.aiplatform.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.aiplatform.framework.security.handle.AuthenticationEntryPointImpl;
 import com.aiplatform.framework.security.handle.LogoutSuccessHandlerImpl;
@@ -46,6 +47,12 @@ public class SecurityConfig
     @Autowired
     private JwtAuthenticationTokenFilter authenticationTokenFilter;
     
+    /**
+     * 内部接口认证过滤器
+     */
+    @Autowired
+    private InternalTokenFilter internalTokenFilter;
+
     /**
      * 跨域过滤器
      */
@@ -99,6 +106,8 @@ public class SecurityConfig
             // 注解标记允许匿名访问的url
             .authorizeHttpRequests((requests) -> {
                 permitAllUrl.getUrls().forEach(url -> requests.requestMatchers(url).permitAll());
+                // 内部接口由 InternalTokenFilter 独立认证，跳过用户 JWT
+                requests.requestMatchers("/ai/internal/**").permitAll();
                 // 对于登录login 注册register 验证码captchaImage 允许匿名访问
                 requests.requestMatchers("/login", "/register", "/captchaImage").permitAll()
                     // 静态资源，可匿名访问
@@ -109,6 +118,8 @@ public class SecurityConfig
             })
             // 添加Logout filter
             .logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler))
+            // 添加内部接口认证 filter（在 JWT filter 之前，拦截 /ai/internal/**）
+            .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)
             // 添加JWT filter
             .addFilterBefore(authenticationTokenFilter, UsernamePasswordAuthenticationFilter.class)
             // 添加CORS filter

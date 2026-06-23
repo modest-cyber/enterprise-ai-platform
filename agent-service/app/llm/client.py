@@ -1,7 +1,8 @@
 """LLM Client — 统一调用 OpenAI 兼容 API 和 Ollama"""
 
+import json as json_module
 import logging
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 import httpx
 
@@ -47,6 +48,98 @@ class LLMClient:
         if not content:
             raise LLMCallError("LLM 返回空内容")
         return content
+
+    async def chat_stream(self, messages: list[dict]) -> AsyncGenerator[str, None]:
+        """
+        真正的流式调用 — 设置 stream: true，逐 token yield
+        """
+        if self.provider == "ollama":
+            async for chunk in self._call_ollama_stream(messages):
+                yield chunk
+        else:
+            async for chunk in self._call_openai_stream(messages):
+                yield chunk
+
+    async def _call_openai_stream(self, messages: list[dict]) -> AsyncGenerator[str, None]:
+        url = f"{self.base_url}/v1/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        body = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "stream": True,
+        }
+        logger.info("流式调用 OpenAI 兼容 API: url=%s model=%s", url, self.model_name)
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                async with client.stream("POST", url, json=body, headers=headers) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            data = json_module.loads(data_str)
+                        except json_module.JSONDecodeError:
+                            continue
+                        choices = data.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                yield content
+            except httpx.TimeoutException:
+                raise LLMTimeoutError(f"LLM 流式调用超时: {url}")
+            except httpx.ConnectError as e:
+                raise LLMConnectionError(f"LLM 流式连接失败: {url}: {e}")
+            except httpx.HTTPStatusError as e:
+                raise LLMCallError(f"LLM 流式 HTTP {e.response.status_code}: {e.response.text[:500]}")
+
+    async def _call_ollama_stream(self, messages: list[dict]) -> AsyncGenerator[str, None]:
+        url = f"{self.base_url}/api/chat"
+        body = {
+            "model": self.model_name,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": self.max_tokens,
+            },
+        }
+        logger.info("流式调用 Ollama API: url=%s model=%s", url, self.model_name)
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                async with client.stream("POST", url, json=body) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            data = json_module.loads(line)
+                        except json_module.JSONDecodeError:
+                            continue
+                        message = data.get("message", {})
+                        content = message.get("content", "")
+                        if content:
+                            yield content
+                        if data.get("done", False):
+                            break
+            except httpx.TimeoutException:
+                raise LLMTimeoutError(f"Ollama 流式调用超时: {url}")
+            except httpx.ConnectError as e:
+                raise LLMConnectionError(f"Ollama 流式连接失败: {url}: {e}")
+            except httpx.HTTPStatusError as e:
+                raise LLMCallError(f"Ollama 流式 HTTP {e.response.status_code}: {e.response.text[:500]}")
 
     async def _call_openai_compatible(self, messages: list[dict]) -> dict:
         url = f"{self.base_url}/v1/chat/completions"

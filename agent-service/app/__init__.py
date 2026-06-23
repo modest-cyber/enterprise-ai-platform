@@ -9,9 +9,15 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o"
     chroma_persist_dir: str = "./chroma_db"
 
+    # JWT / 内部认证
+    jwt_secret: str = "abcdefghijklmnopqrstuvwxyz"  # 与 Spring Boot token.secret 一致
+    internal_secret: str = "internal-shared-secret"  # 预共享密钥
+    spring_boot_url: str = "http://localhost:8080"   # Spring Boot 地址
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()

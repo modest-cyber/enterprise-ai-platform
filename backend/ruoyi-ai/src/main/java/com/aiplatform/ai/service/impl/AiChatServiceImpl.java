@@ -11,6 +11,9 @@ import com.aiplatform.ai.domain.AiMessage;
 import com.aiplatform.ai.domain.AiModel;
 import com.aiplatform.ai.domain.dto.ChatRequestDto;
 import com.aiplatform.ai.domain.dto.ChatResponseDto;
+import com.aiplatform.ai.domain.dto.ConversationConfigDto;
+import com.aiplatform.ai.domain.dto.MessageSaveRequestDto;
+import java.util.stream.Collectors;
 import com.aiplatform.ai.mapper.AiConversationMapper;
 import com.aiplatform.ai.mapper.AiMessageMapper;
 import com.aiplatform.ai.service.IAgentService;
@@ -114,6 +117,111 @@ public class AiChatServiceImpl implements IAiChatService {
         conversationMapper.updateConversation(update);
 
         return title;
+    }
+
+    @Override
+    public ConversationConfigDto getConversationConfig(Long conversationId) {
+        AiConversation conversation = conversationMapper.selectConversationById(conversationId);
+        if (conversation == null) {
+            throw new ServiceException("会话不存在");
+        }
+
+        ConversationConfigDto dto = new ConversationConfigDto();
+        dto.setConversationId(conversation.getConversationId());
+        dto.setTitle(conversation.getTitle());
+        dto.setUserId(conversation.getUserId());
+
+        // Agent 配置
+        if (conversation.getAgentId() != null) {
+            AgentConfig agent = agentService.selectAgentById(conversation.getAgentId());
+            if (agent != null) {
+                ConversationConfigDto.AgentInfo agentInfo = new ConversationConfigDto.AgentInfo();
+                agentInfo.setAgentId(agent.getAgentId());
+                agentInfo.setAgentName(agent.getAgentName());
+                agentInfo.setAgentType(agent.getAgentType());
+                agentInfo.setSystemPrompt(agent.getSystemPrompt());
+                agentInfo.setMaxIterations(agent.getMaxIterations());
+                agentInfo.setTemperature(agent.getTemperature());
+                agentInfo.setTimeoutSeconds(agent.getTimeoutSeconds());
+                dto.setAgent(agentInfo);
+            }
+        }
+
+        // Model 配置
+        if (conversation.getModelId() != null) {
+            AiModel model = modelConfigService.selectModelById(conversation.getModelId());
+            if (model != null) {
+                ConversationConfigDto.ModelInfo modelInfo = new ConversationConfigDto.ModelInfo();
+                modelInfo.setModelId(model.getModelId());
+                modelInfo.setModelName(model.getModelName());
+                modelInfo.setDisplayName(model.getDisplayName());
+                modelInfo.setProvider(model.getProvider());
+                modelInfo.setApiKey(model.getApiKey());
+                modelInfo.setBaseUrl(model.getBaseUrl());
+                modelInfo.setModelType(model.getModelType());
+                modelInfo.setMaxTokens(model.getMaxTokens());
+                modelInfo.setTemperature(model.getTemperature());
+                dto.setModel(modelInfo);
+            }
+        }
+
+        // 历史消息
+        List<AiMessage> messages = messageMapper.selectMessagesByConversationId(conversationId);
+        dto.setHistory(messages.stream().map(m -> {
+            ConversationConfigDto.HistoryMessage hm = new ConversationConfigDto.HistoryMessage();
+            hm.setRole(m.getRole());
+            hm.setContent(m.getContent());
+            return hm;
+        }).collect(Collectors.toList()));
+
+        return dto;
+    }
+
+    @Override
+    public ConversationConfigDto createConversationFromInternal(Long userId, String title,
+                                                                 Long agentId, Long modelId) {
+        Date now = DateUtils.getNowDate();
+
+        AiConversation conversation = new AiConversation();
+        conversation.setUserId(userId);
+        conversation.setTitle(title != null ? title : "新会话");
+        conversation.setAgentId(agentId);
+        conversation.setModelId(modelId);
+        conversation.setStatus(1);
+        conversation.setCreateTime(now);
+        conversation.setUpdateTime(now);
+        conversationMapper.insertConversation(conversation);
+
+        return getConversationConfig(conversation.getConversationId());
+    }
+
+    @Override
+    public void saveMessage(MessageSaveRequestDto dto) {
+        Date now = DateUtils.getNowDate();
+
+        AiMessage userMessage = new AiMessage();
+        userMessage.setConversationId(dto.getConversationId());
+        userMessage.setRole("user");
+        userMessage.setContent(dto.getUserMessage());
+        userMessage.setSourceType("llm");
+        userMessage.setCreateTime(now);
+        messageMapper.insertMessage(userMessage);
+
+        AiMessage aiMessage = new AiMessage();
+        aiMessage.setConversationId(dto.getConversationId());
+        aiMessage.setRole("assistant");
+        aiMessage.setContent(dto.getAiMessage());
+        aiMessage.setSourceType("llm");
+        if (dto.getTokenUsage() != null) {
+            aiMessage.setTokenCount(dto.getTokenUsage().getTotalTokens());
+        }
+        aiMessage.setCreateTime(DateUtils.getNowDate());
+        messageMapper.insertMessage(aiMessage);
+
+        AiConversation updateConv = new AiConversation();
+        updateConv.setConversationId(dto.getConversationId());
+        updateConv.setUpdateTime(DateUtils.getNowDate());
+        conversationMapper.updateConversation(updateConv);
     }
 
     private String generateTitleFromMessage(String message) {

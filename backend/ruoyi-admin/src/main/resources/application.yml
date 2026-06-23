@@ -147,6 +147,12 @@ ai:
     model-name: gpt-4o
     temperature: 0.7
     max-tokens: 4096
+  # 内部接口认证配置
+  internal:
+    # 预共享密钥（FastAPI 获取内部 JWT 时使用，与 agent-service/.env 中保持一致）
+    secret: ${AI_INTERNAL_SECRET:internal-shared-secret}
+    # 内部 JWT 有效期（分钟）
+    token-expire-time: 30
 
 # 防止XSS攻击
 xss:

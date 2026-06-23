@@ -116,7 +116,8 @@ import { ref, reactive, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
-import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
+import { getToken } from '@/utils/auth'
+import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages } from '@/api/ai/chat'
 import { listEnabledAgents } from '@/api/ai/agent'
 import { listEnabledModels } from '@/api/ai/model'
 
@@ -175,42 +176,103 @@ async function handleSend() {
   messages.value.push(localUserMsg)
   await scrollToBottom()
 
+  // 创建 AI 占位气泡（流式填充）
+  const aiMsg = {
+    messageId: Date.now() + 1,
+    conversationId: currentConversationId.value,
+    role: 'assistant',
+    content: '',
+    createTime: new Date().toISOString()
+  }
+  messages.value.push(aiMsg)
+
+  const dto: any = {
+    message: message,
+    agentId: agentId.value || null,
+    modelId: modelId.value || null
+  }
+  if (currentConversationId.value) {
+    dto.conversationId = currentConversationId.value
+  }
+
   try {
-    const dto: any = {
-      message: message,
-      modelId: modelId.value || null,
-      agentId: agentId.value || null
-    }
-    if (currentConversationId.value) {
-      dto.conversationId = currentConversationId.value
+    const token = getToken()
+    const response = await fetch('/api/v1/chat/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(dto)
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
     }
 
-    const response = await sendChat(dto)
-    const data = response.data
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('无法读取响应流')
 
-    const aiMsg = {
-      messageId: data.messageId || Date.now(),
-      conversationId: data.conversationId,
-      role: data.role || 'assistant',
-      content: data.content,
-      createTime: new Date().toISOString()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+
+        if (line.startsWith('data: ')) {
+          const dataStr = line.substring(6)
+          if (dataStr === '[DONE]') continue
+
+          try {
+            const data = JSON.parse(dataStr)
+
+            if (data.type === 'token' && data.content) {
+              aiMsg.content += data.content
+            } else if (data.type === 'done') {
+              // 流结束
+              if (data.content && !aiMsg.content) {
+                aiMsg.content = data.content
+              }
+            } else if (data.type === 'error') {
+              ElMessage.error(data.message || '聊天出错')
+            }
+          } catch {
+            // 非 JSON 数据，跳过
+          }
+        } else if (line.startsWith('event: ')) {
+          const eventType = line.substring(7)
+          if (eventType === 'done') {
+            if (!currentConversationId.value) {
+              fetchConversationList()
+            }
+          }
+        }
+      }
     }
-    messages.value.push(aiMsg)
 
+    // SSE 流结束后刷新会话列表
     if (!currentConversationId.value) {
-      currentConversationId.value = data.conversationId
       fetchConversationList()
-    } else if (data.title) {
-      const conv = conversationList.value.find(c => c.conversationId === data.conversationId)
-      if (conv) conv.title = data.title
     }
-
-    await scrollToBottom()
-  } catch {
-    ElMessage.error('发送消息失败')
-    messages.value.pop()
+  } catch (e: any) {
+    console.error('SSE 连接失败:', e)
+    ElMessage.error('连接失败: ' + (e.message || '未知错误'))
+    // 移除空的 AI 占位消息
+    if (!aiMsg.content) {
+      messages.value.pop()
+    }
   } finally {
     sending.value = false
+    await scrollToBottom()
   }
 }
 
