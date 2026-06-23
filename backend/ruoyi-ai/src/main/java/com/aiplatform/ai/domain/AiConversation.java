@@ -38,6 +38,12 @@ public class AiConversation extends BaseEntity {
     @Size(max = 50, message = "Agent类型长度不能超过50个字符")
     private String agentType;
 
+    /** 绑定的Agent ID */
+    private Long agentId;
+
+    /** 绑定的模型 ID */
+    private Long modelId;
+
     /** 状态：1-进行中，0-已归档 */
     private Integer status;
 
@@ -48,6 +54,8 @@ public class AiConversation extends BaseEntity {
             .append("userId", getUserId())
             .append("title", getTitle())
             .append("agentType", getAgentType())
+            .append("agentId", getAgentId())
+            .append("modelId", getModelId())
             .append("status", getStatus())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())

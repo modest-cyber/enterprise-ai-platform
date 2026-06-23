@@ -87,7 +87,6 @@
           <div class="chat-input-actions">
             <div class="chat-input-selects">
               <el-select v-model="modelId" placeholder="选择模型" style="width: 200px" size="default" clearable>
-                <el-option label="默认" value="" />
                 <el-option
                     v-for="m in modelOptions"
                     :key="m.modelId"
@@ -95,13 +94,12 @@
                     :value="m.modelId"
                 />
               </el-select>
-              <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
-                <el-option label="默认" value="" />
+              <el-select v-model="agentId" placeholder="Agent类型" style="width: 160px" size="default" clearable>
                 <el-option
                     v-for="agent in agentOptions"
                     :key="agent.agentId"
                     :label="agent.agentName"
-                    :value="agent.agentType"
+                    :value="agent.agentId"
                 />
               </el-select>
             </div>
@@ -128,7 +126,7 @@ const messages = ref<any[]>([])
 const inputMessage = ref('')
 const modelId = ref<number | null>(null)
 const modelOptions = ref<any[]>([])
-const agentType = ref('')
+const agentId = ref<number | null>(null)
 const agentOptions = ref<any[]>([])
 const sending = ref(false)
 const messageContainer = ref<HTMLElement | null>(null)
@@ -181,7 +179,7 @@ async function handleSend() {
     const dto: any = {
       message: message,
       modelId: modelId.value || null,
-      agentType: agentType.value || null
+      agentId: agentId.value || null
     }
     if (currentConversationId.value) {
       dto.conversationId = currentConversationId.value

@@ -1,4 +1,4 @@
-"""核心路由 — Chat / RAG / Embedding（真实 LLM 调用）"""
+"""核心路由 — Chat / RAG / Embedding（真实 LLM 调用 + Agent/Model 动态注入）"""
 
 import asyncio
 import json
@@ -17,30 +17,16 @@ router = APIRouter()
 # ── 请求 / 响应模型 ──
 
 class ChatRequest(BaseModel):
+    conversationId: str = Field(default="", description="会话 ID")
     message: str = Field(..., description="用户输入消息")
-    sessionId: str = Field(default="default", description="会话 ID")
-    provider: str = Field(default="", description="模型 Provider: openai/deepseek/qwen/ollama")
-    modelName: str = Field(default="", description="模型名称")
-    baseUrl: str = Field(default="", description="API Base URL")
-    apiKey: str = Field(default="", description="API Key")
-    temperature: float = Field(default=0.7, description="温度参数")
-    maxTokens: int = Field(default=4096, description="最大输出 Token 数")
-
-
-class ChatResponse(BaseModel):
-    content: str
-    agent: str
-    sessionId: str
-    tokenUsage: dict = Field(default_factory=dict)
+    agent: dict = Field(default_factory=dict, description="Agent 配置")
+    model: dict = Field(default_factory=dict, description="模型配置")
 
 
 class RagRequest(BaseModel):
     query: str = Field(..., description="检索查询")
     documents: list[dict] = Field(default_factory=list, description="文档列表")
-    provider: str = Field(default="", description="模型 Provider")
-    modelName: str = Field(default="", description="模型名称")
-    baseUrl: str = Field(default="", description="API Base URL")
-    apiKey: str = Field(default="", description="API Key")
+    model: dict = Field(default_factory=dict, description="模型配置")
 
 
 class EmbedRequest(BaseModel):
@@ -54,55 +40,64 @@ async def health_check():
     return {"status": "ok"}
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat")
 async def chat(req: ChatRequest):
-    if not req.provider or not req.modelName or not req.baseUrl:
-        return _mock_chat(req)
+    model = req.model
+    if not model or not model.get("provider") or not model.get("modelName") or not model.get("baseUrl"):
+        return {"success": True, "content": _mock_reply(req.message)}
 
     try:
         client = LLMClient(
-            provider=req.provider,
-            model_name=req.modelName,
-            base_url=req.baseUrl,
-            api_key=req.apiKey,
-            temperature=req.temperature,
-            max_tokens=req.maxTokens,
+            provider=model["provider"],
+            model_name=model["modelName"],
+            base_url=model["baseUrl"],
+            api_key=model.get("apiKey", ""),
+            temperature=model.get("temperature", 0.7),
+            max_tokens=model.get("maxTokens", 4096),
         )
-        messages = [{"role": "user", "content": req.message}]
+
+        messages = _build_messages(req)
         result = await client.chat(messages)
 
-        return ChatResponse(
-            content=result["content"],
-            agent=result.get("model", req.modelName),
-            sessionId=req.sessionId,
-            tokenUsage=result.get("usage", {}),
+        logger.info(
+            "LLM 调用成功: model=%s, tokens=%s",
+            result.get("model", "unknown"),
+            result.get("usage", {}),
         )
+        return {"success": True, "content": result["content"]}
+
     except LLMException as e:
         logger.error("LLM 调用失败: %s", e)
-        return ChatResponse(
-            content=f"LLM 调用失败: {e}",
-            agent="error",
-            sessionId=req.sessionId,
-            tokenUsage={},
-        )
+        return {"success": False, "message": f"LLM 调用失败: {e}"}
+
+
+def _build_messages(req: ChatRequest) -> list[dict]:
+    messages = []
+    agent = req.agent or {}
+    system_prompt = agent.get("systemPrompt", "")
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": req.message})
+    return messages
 
 
 @router.post("/chat/stream")
 async def chat_stream(req: ChatRequest):
-    if not req.provider or not req.modelName or not req.baseUrl:
+    model = req.model
+    if not model or not model.get("provider") or not model.get("modelName") or not model.get("baseUrl"):
         return StreamingResponse(_mock_stream(req), media_type="text/event-stream")
 
     async def generate():
         try:
             client = LLMClient(
-                provider=req.provider,
-                model_name=req.modelName,
-                base_url=req.baseUrl,
-                api_key=req.apiKey,
-                temperature=req.temperature,
-                max_tokens=req.maxTokens,
+                provider=model["provider"],
+                model_name=model["modelName"],
+                base_url=model["baseUrl"],
+                api_key=model.get("apiKey", ""),
+                temperature=model.get("temperature", 0.7),
+                max_tokens=model.get("maxTokens", 4096),
             )
-            messages = [{"role": "user", "content": req.message}]
+            messages = _build_messages(req)
             reply = await client.chat_str(messages)
 
             for i, ch in enumerate(reply):
@@ -121,15 +116,16 @@ async def chat_stream(req: ChatRequest):
 
 @router.post("/rag")
 async def rag(req: RagRequest):
-    if not req.provider or not req.modelName or not req.baseUrl:
-        return _mock_rag(req)
+    model = req.model
+    if not model or not model.get("provider") or not model.get("modelName") or not model.get("baseUrl"):
+        return _mock_rag_result(req)
 
     try:
         client = LLMClient(
-            provider=req.provider,
-            model_name=req.modelName,
-            base_url=req.baseUrl,
-            api_key=req.apiKey,
+            provider=model["provider"],
+            model_name=model["modelName"],
+            base_url=model["baseUrl"],
+            api_key=model.get("apiKey", ""),
         )
         doc_texts = "\n\n".join([
             d.get("content", d.get("text", str(d))) for d in req.documents
@@ -181,22 +177,12 @@ async def embed(req: EmbedRequest):
 
 # ── Mock 兜底 ──
 
-def _mock_chat(req: ChatRequest) -> ChatResponse:
-    content = f"[Mock LLM] 收到您的消息：「{req.message}」。这是模拟回复，实际部署时将调用真实大模型。"
-    return ChatResponse(
-        content=content,
-        agent="planner",
-        sessionId=req.sessionId,
-        tokenUsage={
-            "prompt_tokens": len(req.message),
-            "completion_tokens": len(content),
-            "total_tokens": len(req.message) + len(content),
-        },
-    )
+def _mock_reply(message: str) -> str:
+    return f"[Mock LLM] 收到您的消息：「{message}」。这是模拟回复，实际部署时将调用真实大模型。"
 
 
 async def _mock_stream(req: ChatRequest):
-    reply = _mock_chat(req).content
+    reply = _mock_reply(req.message)
     for i, ch in enumerate(reply):
         delta = {"type": "delta", "index": i, "content": ch}
         yield f"data: {json.dumps(delta, ensure_ascii=False)}\n\n"
@@ -205,7 +191,7 @@ async def _mock_stream(req: ChatRequest):
     yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n"
 
 
-def _mock_rag(req: RagRequest) -> dict:
+def _mock_rag_result(req: RagRequest) -> dict:
     doc_texts = "\n\n".join([
         d.get("content", d.get("text", str(d))) for d in req.documents
     ])

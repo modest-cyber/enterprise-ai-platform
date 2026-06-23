@@ -149,6 +149,8 @@ public class AiChatServiceImpl implements IAiChatService {
         Date now = DateUtils.getNowDate();
         Long conversationId;
         String title;
+        Long resolvedAgentId;
+        Long resolvedModelId;
 
         if (dto.getConversationId() != null) {
             AiConversation conversation = conversationMapper.selectConversationById(dto.getConversationId());
@@ -157,12 +159,18 @@ public class AiChatServiceImpl implements IAiChatService {
             }
             conversationId = dto.getConversationId();
             title = conversation.getTitle();
+            resolvedAgentId = conversation.getAgentId();
+            resolvedModelId = conversation.getModelId();
         } else {
             title = generateTitleFromMessage(dto.getMessage());
+            resolvedAgentId = dto.getAgentId();
+            resolvedModelId = dto.getModelId();
+
             AiConversation conversation = new AiConversation();
             conversation.setUserId(userId);
             conversation.setTitle(title);
-            conversation.setAgentType(dto.getAgentType());
+            conversation.setAgentId(resolvedAgentId);
+            conversation.setModelId(resolvedModelId);
             conversation.setStatus(1);
             conversation.setCreateTime(now);
             conversation.setUpdateTime(now);
@@ -179,7 +187,8 @@ public class AiChatServiceImpl implements IAiChatService {
 
         String reply;
         try {
-            reply = callPythonAgent(dto, conversationId);
+            reply = callPythonAgent(dto.getMessage(), String.valueOf(conversationId),
+                    resolvedAgentId, resolvedModelId);
         } catch (Exception e) {
             log.error("Python Agent 调用失败, 回退 mock: {}", e.getMessage());
             reply = "这是模拟回复：" + dto.getMessage();
@@ -189,7 +198,6 @@ public class AiChatServiceImpl implements IAiChatService {
         aiMessage.setConversationId(conversationId);
         aiMessage.setRole("assistant");
         aiMessage.setContent(reply);
-        aiMessage.setSourceType(dto.getAgentType());
         aiMessage.setCreateTime(DateUtils.getNowDate());
         messageMapper.insertMessage(aiMessage);
 
@@ -204,35 +212,19 @@ public class AiChatServiceImpl implements IAiChatService {
         response.setMessageId(aiMessage.getMessageId());
         response.setContent(reply);
         response.setRole("assistant");
-        response.setAgentType(dto.getAgentType());
 
         return response;
     }
 
-    private String callPythonAgent(ChatRequestDto dto, Long conversationId) {
-        AiModel model = resolveModel(dto);
+    private String callPythonAgent(String message, String conversationId,
+                                    Long agentId, Long modelId) {
+        AgentConfig agent = agentId != null ? agentService.selectAgentById(agentId) : null;
+        AiModel model = modelId != null ? modelConfigService.selectModelById(modelId) : null;
 
-        String provider = model != null ? model.getProvider() : "";
-        String modelName = model != null ? model.getModelName() : "";
-        String baseUrl = model != null ? model.getBaseUrl() : "";
-        String apiKey = model != null ? model.getApiKey() : "";
-        Double temperature = model != null && model.getTemperature() != null
-                ? model.getTemperature() : 0.7;
-        Integer maxTokens = model != null && model.getMaxTokens() != null
-                ? model.getMaxTokens() : 4096;
+        log.info("调用 Python Agent: agentId={}, modelId={}", agentId, modelId);
 
-        log.info("调用 Python Agent: provider={}, model={}, baseUrl={}", provider, modelName, baseUrl);
-
-        AjaxResult result = chatAgentClient.chatWithModel(
-                dto.getMessage(),
-                String.valueOf(conversationId),
-                provider,
-                modelName,
-                baseUrl,
-                apiKey,
-                temperature,
-                maxTokens
-        );
+        AjaxResult result = chatAgentClient.chatWithContext(
+                message, conversationId, agent, model);
 
         Object data = result.get(AjaxResult.DATA_TAG);
         if (data instanceof Map) {
@@ -246,18 +238,5 @@ public class AiChatServiceImpl implements IAiChatService {
         return result.get(AjaxResult.MSG_TAG) != null
                 ? result.get(AjaxResult.MSG_TAG).toString()
                 : "AI 回复异常";
-    }
-
-    private AiModel resolveModel(ChatRequestDto dto) {
-        if (dto.getModelId() != null) {
-            return modelConfigService.selectModelById(dto.getModelId());
-        }
-        if (dto.getAgentType() != null && !dto.getAgentType().isBlank()) {
-            AgentConfig agent = agentService.selectAgentByName(dto.getAgentType());
-            if (agent != null && agent.getModelId() != null) {
-                return modelConfigService.selectModelById(agent.getModelId());
-            }
-        }
-        return null;
     }
 }

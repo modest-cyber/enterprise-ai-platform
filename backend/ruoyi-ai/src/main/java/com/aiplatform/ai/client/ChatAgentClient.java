@@ -2,10 +2,9 @@ package com.aiplatform.ai.client;
 
 import java.util.HashMap;
 import java.util.Map;
-import com.aiplatform.ai.config.AgentProperties;
-import com.aiplatform.common.annotation.Log;
+import com.aiplatform.ai.domain.AgentConfig;
+import com.aiplatform.ai.domain.AiModel;
 import com.aiplatform.common.core.domain.AjaxResult;
-import com.aiplatform.common.enums.BusinessType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -18,58 +17,65 @@ public class ChatAgentClient {
     @Resource
     private FastApiClient fastApiClient;
     @Resource
-    private AgentProperties agentProperties;
-    @Resource
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public ChatAgentClient(FastApiClient fastApiClient, AgentProperties agentProperties) {
+    public ChatAgentClient(FastApiClient fastApiClient) {
         this.fastApiClient = fastApiClient;
-        this.agentProperties = agentProperties;
     }
 
-    @Log(title = "AI调用", businessType = BusinessType.OTHER)
     public AjaxResult chat(String message, String sessionId) {
         Map<String, Object> body = new HashMap<>();
         body.put("message", message);
         body.put("sessionId", sessionId);
+        body.put("agent", new HashMap<>());
+        body.put("model", new HashMap<>());
 
         String rawJson = fastApiClient.post("/chat", body);
-        return convertChatResult(rawJson);
+        return parseChatResult(rawJson);
     }
 
-    @Log(title = "AI调用", businessType = BusinessType.OTHER)
-    public AjaxResult chatWithModel(String message, String sessionId,
-                                     String provider, String modelName,
-                                     String baseUrl, String apiKey,
-                                     Double temperature, Integer maxTokens) {
+    public AjaxResult chatWithContext(String message, String conversationId,
+                                       AgentConfig agent, AiModel model) {
         Map<String, Object> body = new HashMap<>();
+        body.put("conversationId", conversationId);
         body.put("message", message);
-        body.put("sessionId", sessionId);
-        body.put("provider", provider != null ? provider : "");
-        body.put("modelName", modelName != null ? modelName : "");
-        body.put("baseUrl", baseUrl != null ? baseUrl : "");
-        body.put("apiKey", apiKey != null ? apiKey : "");
-        body.put("temperature", temperature != null ? temperature : 0.7);
-        body.put("maxTokens", maxTokens != null ? maxTokens : 4096);
+
+        Map<String, Object> agentMap = new HashMap<>();
+        if (agent != null) {
+            agentMap.put("id", agent.getAgentId());
+            agentMap.put("name", agent.getAgentName());
+            agentMap.put("systemPrompt", agent.getSystemPrompt() != null ? agent.getSystemPrompt() : "");
+        }
+        body.put("agent", agentMap);
+
+        Map<String, Object> modelMap = new HashMap<>();
+        if (model != null) {
+            modelMap.put("id", model.getModelId());
+            modelMap.put("provider", model.getProvider());
+            modelMap.put("modelName", model.getModelName());
+            modelMap.put("baseUrl", model.getBaseUrl());
+            modelMap.put("apiKey", model.getApiKey() != null ? model.getApiKey() : "");
+            modelMap.put("temperature", model.getTemperature() != null ? model.getTemperature() : 0.7);
+            modelMap.put("maxTokens", model.getMaxTokens() != null ? model.getMaxTokens() : 4096);
+        }
+        body.put("model", modelMap);
 
         String rawJson = fastApiClient.post("/chat", body);
-        return convertChatResult(rawJson);
+        return parseChatResult(rawJson);
     }
 
-    private AjaxResult convertChatResult(String rawJson) {
+    private AjaxResult parseChatResult(String rawJson) {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = objectMapper.readValue(rawJson, Map.class);
-            Object content = map.get("content");
-            if (content != null) {
+            Object success = map.get("success");
+            if (Boolean.TRUE.equals(success)) {
+                Object content = map.get("content");
                 Map<String, Object> data = new HashMap<>();
-                data.put("content", content);
-                data.put("sessionId", map.get("sessionId"));
-                data.put("agent", map.get("agent"));
-                data.put("tokenUsage", map.get("tokenUsage"));
+                data.put("content", content != null ? content : "");
                 return AjaxResult.success(data);
             }
-            return AjaxResult.success(rawJson);
+            return AjaxResult.error(map.get("message") != null ? map.get("message").toString() : "Agent 返回异常");
         } catch (Exception e) {
             log.warn("Agent 返回 JSON 解析失败，按原始文本返回: {}", e.getMessage());
             return AjaxResult.success(rawJson);

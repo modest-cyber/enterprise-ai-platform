@@ -9,6 +9,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="userId"           column="user_id"           />
         <result property="title"            column="title"             />
         <result property="agentType"        column="agent_type"        />
+        <result property="agentId"          column="agent_id"          />
+        <result property="modelId"          column="model_id"          />
         <result property="status"           column="status"            />
         <result property="createBy"         column="create_by"         />
         <result property="createTime"       column="create_time"       />
@@ -18,7 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectConversationVo">
-        select conversation_id, user_id, title, agent_type, status,
+        select conversation_id, user_id, title, agent_type, agent_id, model_id, status,
                create_by, create_time, update_by, update_time, remark
         from ai_conversation
     </sql>
@@ -52,6 +54,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="userId != null">user_id,</if>
             <if test="title != null and title != ''">title,</if>
             <if test="agentType != null and agentType != ''">agent_type,</if>
+            <if test="agentId != null">agent_id,</if>
+            <if test="modelId != null">model_id,</if>
             <if test="status != null">status,</if>
             <if test="createBy != null and createBy != ''">create_by,</if>
             <if test="remark != null and remark != ''">remark,</if>
@@ -60,6 +64,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="userId != null">#{userId},</if>
             <if test="title != null and title != ''">#{title},</if>
             <if test="agentType != null and agentType != ''">#{agentType},</if>
+            <if test="agentId != null">#{agentId},</if>
+            <if test="modelId != null">#{modelId},</if>
             <if test="status != null">#{status},</if>
             <if test="createBy != null and createBy != ''">#{createBy},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
@@ -72,6 +78,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <set>
             <if test="title != null and title != ''">title = #{title},</if>
             <if test="agentType != null and agentType != ''">agent_type = #{agentType},</if>
+            <if test="agentId != null">agent_id = #{agentId},</if>
+            <if test="modelId != null">model_id = #{modelId},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>

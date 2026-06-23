@@ -24,6 +24,9 @@ public class ChatRequestDto implements Serializable {
     @Size(max = 4000, message = "消息长度不能超过4000字符")
     private String message;
 
+    /** Agent ID */
+    private Long agentId;
+
     /** Agent类型：planner/rag/code/review */
     private String agentType;
 
