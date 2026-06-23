@@ -6,23 +6,23 @@
       </div>
       <div class="conversation-list">
         <div
-          v-for="item in conversationList"
-          :key="item.conversationId"
-          :class="['conversation-item', { active: currentConversationId === item.conversationId }]"
-          @click="handleSelectConversation(item)"
+            v-for="item in conversationList"
+            :key="item.conversationId"
+            :class="['conversation-item', { active: currentConversationId === item.conversationId }]"
+            @click="handleSelectConversation(item)"
         >
           <div class="conversation-info">
             <div class="conversation-title-row">
               <span v-if="editingId !== item.conversationId" class="conversation-title" @dblclick="startRename(item)">{{ item.title || '新会话' }}</span>
               <el-input
-                v-else
-                v-model="editingTitle"
-                size="small"
-                class="rename-input"
-                @blur="confirmRename(item)"
-                @keydown.enter="confirmRename(item)"
-                @click.stop
-                ref="renameInputRef"
+                  v-else
+                  v-model="editingTitle"
+                  size="small"
+                  class="rename-input"
+                  @blur="confirmRename(item)"
+                  @keydown.enter="confirmRename(item)"
+                  @click.stop
+                  ref="renameInputRef"
               />
             </div>
             <div class="conversation-meta">
@@ -53,15 +53,15 @@
         <div class="empty-icon">
           <el-icon :size="80"><ChatDotRound /></el-icon>
         </div>
-        <p>输入消息开始对话</p>
+        <p>输入消息开始对话</p >
       </div>
 
       <div v-else class="chat-window">
         <div class="chat-messages" ref="messageContainer">
           <div
-            v-for="msg in messages"
-            :key="msg.messageId || msg.id"
-            :class="['message-item', msg.role === 'user' ? 'message-user' : 'message-ai']"
+              v-for="msg in messages"
+              :key="msg.messageId || msg.id"
+              :class="['message-item', msg.role === 'user' ? 'message-user' : 'message-ai']"
           >
             <div class="message-avatar">
               <el-icon :size="28" v-if="msg.role === 'user'"><UserFilled /></el-icon>
@@ -77,31 +77,31 @@
 
         <div class="chat-input">
           <el-input
-            v-model="inputMessage"
-            type="textarea"
-            :rows="3"
-            placeholder="输入消息，Enter发送，Shift+Enter换行"
-            @keydown.enter.exact="handleKeyDown"
-            resize="none"
+              v-model="inputMessage"
+              type="textarea"
+              :rows="3"
+              placeholder="输入消息，Enter发送，Shift+Enter换行"
+              @keydown.enter.exact="handleKeyDown"
+              resize="none"
           />
           <div class="chat-input-actions">
             <div class="chat-input-selects">
               <el-select v-model="modelId" placeholder="选择模型" style="width: 200px" size="default" clearable>
                 <el-option label="默认" value="" />
                 <el-option
-                  v-for="m in modelOptions"
-                  :key="m.modelId"
-                  :label="m.displayName + ' (' + m.modelName + ')'"
-                  :value="m.modelId"
+                    v-for="m in modelOptions"
+                    :key="m.modelId"
+                    :label="m.displayName + ' (' + m.modelName + ')'"
+                    :value="m.modelId"
                 />
               </el-select>
               <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
                 <el-option label="默认" value="" />
                 <el-option
-                  v-for="agent in agentOptions"
-                  :key="agent.agentId"
-                  :label="agent.agentName"
-                  :value="agent.agentType"
+                    v-for="agent in agentOptions"
+                    :key="agent.agentId"
+                    :label="agent.agentName"
+                    :value="agent.agentType"
                 />
               </el-select>
             </div>
