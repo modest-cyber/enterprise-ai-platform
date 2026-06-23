@@ -10,6 +10,7 @@ import org.apache.tika.exception.TikaException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.aiplatform.ai.client.KnowledgeProcessClient;
 import com.aiplatform.ai.domain.KbDocument;
 import com.aiplatform.ai.domain.KbKnowledge;
 import com.aiplatform.ai.domain.dto.KnowledgeUploadDto;
@@ -53,6 +54,9 @@ public class DocumentServiceImpl implements IDocumentService {
 
     @Autowired
     private KbDocumentMapper documentMapper;
+
+    @Autowired
+    private KnowledgeProcessClient knowledgeProcessClient;
 
     @Autowired
     private KbKnowledgeMapper knowledgeMapper;
@@ -244,39 +248,41 @@ public class DocumentServiceImpl implements IDocumentService {
         documentMapper.updateDocument(doc);
 
         try {
-            // Step 1: 文件读取 (10%)
-            updateProgress(documentId, 10, "文件读取完成");
+            String filePath = resolveFullPath(doc.getFilePath());
+            log.info("[RAG] 调用 Python 处理: docId={}, kbId={}, path={}", documentId, doc.getKbId(), filePath);
 
-            // Step 2: 文本解析 (30%)
-            updateProgress(documentId, 30, "文本解析完成");
-
-            // Step 3: 文本切块 (50%)
-            String contentText = doc.getContentText();
-            if (contentText == null || contentText.isEmpty()) {
-                contentText = extractText(doc.getFileType(), resolveFullPath(doc.getFilePath()));
-                doc.setContentText(contentText);
+            if (doc.getContentText() == null || doc.getContentText().isEmpty()) {
+                doc.setContentText(extractText(doc.getFileType(), filePath));
             }
-            List<String> chunks = chunkText(contentText, 512, 50);
-            doc.setChunkCount(chunks.size());
-            updateProgress(documentId, 50, "文本切块完成，共" + chunks.size() + "块");
 
-            // Step 4: Embedding (80%)
-            updateProgress(documentId, 80, "Embedding处理中...");
+            KnowledgeProcessClient.ProcessResult result = knowledgeProcessClient.process(
+                    documentId, filePath, doc.getKbId());
 
-            // Step 5: 写入Milvus (100%)
-            doc.setVectorCount(chunks.size());
-            doc.setProcessStatus("SUCCESS");
-            doc.setProcessProgress(100);
-            doc.setProcessMessage("处理完成");
-            doc.setProcessedTime(DateUtils.getNowDate());
-            documentMapper.updateDocument(doc);
-            log.info("文档处理完成: docId={}, chunkCount={}, vectorCount={}", documentId, chunks.size(), chunks.size());
+            if (result.success) {
+                doc.setChunkCount(result.chunkCount);
+                doc.setVectorCount(result.vectorCount);
+                doc.setProcessStatus("SUCCESS");
+                doc.setProcessProgress(100);
+                doc.setProcessMessage("处理完成");
+                doc.setProcessedTime(DateUtils.getNowDate());
+                doc.setUpdateTime(DateUtils.getNowDate());
+                documentMapper.updateDocument(doc);
+                log.info("[RAG] 文档处理完成: docId={}, chunkCount={}, vectorCount={}",
+                        documentId, result.chunkCount, result.vectorCount);
+            } else {
+                doc.setProcessStatus("FAILED");
+                doc.setProcessProgress(0);
+                doc.setProcessMessage(result.message);
+                doc.setUpdateTime(DateUtils.getNowDate());
+                documentMapper.updateDocument(doc);
+                log.error("[RAG] 文档处理失败: docId={}, message={}", documentId, result.message);
+            }
 
         } catch (Exception e) {
-            log.error("文档处理失败: docId={}", documentId, e);
+            log.error("[RAG] 文档处理异常: docId={}", documentId, e);
             doc.setProcessStatus("FAILED");
             doc.setProcessProgress(0);
-            doc.setProcessMessage(e.getMessage());
+            doc.setProcessMessage("Python 服务不可用: " + e.getMessage());
             doc.setUpdateTime(DateUtils.getNowDate());
             documentMapper.updateDocument(doc);
         }

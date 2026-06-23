@@ -100,6 +100,15 @@ public class FastApiClient {
         }
     }
 
+    public String health() {
+        try {
+            return get("/health");
+        } catch (Exception e) {
+            log.error("Python 健康检查失败: {}", e.getMessage());
+            throw new ServiceException("Python Agent 服务不可达: " + agentProperties.getBaseUrl());
+        }
+    }
+
     public Flux<String> streamPost(String path, Map<String, Object> body) {
         long start = System.currentTimeMillis();
         return buildClient().post()

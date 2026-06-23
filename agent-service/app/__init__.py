@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic_settings import BaseSettings
 
 
@@ -25,11 +25,42 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # 启动自检（延迟导入，不影响路由注册）
+    _startup_ok = False
+
+    @app.on_event("startup")
+    async def on_startup():
+        nonlocal _startup_ok
+        from app.health import get_health_checker
+        checker = get_health_checker()
+        status = checker.run_startup_check()
+        _startup_ok = status.overall != "unavailable"
+
     @app.get("/health")
-    async def root_health():
-        return {"status": "ok"}
+    async def health():
+        from app.health import get_health_checker
+        checker = get_health_checker()
+        status = checker.get_status()
+        result = {
+            "python": status.python,
+            "embedding": status.embedding,
+            "milvus": status.milvus,
+            "rag": status.rag,
+            "upload_dir": status.upload_dir,
+            "dependencies": status.dependencies,
+            "overall": status.overall,
+        }
+        if status.overall == "unavailable":
+            raise HTTPException(status_code=503, detail=result)
+        return result
 
     from api.routes import router
     app.include_router(router, prefix="/api/v1")
+
+    from api.knowledge import router as knowledge_router
+    app.include_router(knowledge_router, prefix="/api/v1/knowledge")
+
+    from api.tools import router as tools_router
+    app.include_router(tools_router, prefix="/api/v1/tools")
 
     return app

@@ -93,7 +93,7 @@
     <el-dialog title="文档预览" v-model="previewOpen" width="80%" top="5vh" append-to-body destroy-on-close>
       <div class="preview-container">
         <div v-if="previewLoading" class="preview-loading">加载中...</div>
-        <iframe v-else-if="previewType === 'pdf'" :src="previewPdfUrl" class="preview-iframe" />
+        <iframe v-else-if="previewType === 'pdf'" :src="previewBlobUrl" class="preview-iframe" />
         <div v-else-if="previewType === 'markdown'" class="preview-markdown" v-html="previewHtml" />
         <pre v-else class="preview-text">{{ previewContent }}</pre>
       </div>
@@ -131,7 +131,7 @@
 <script setup lang="ts" name="KbDetail">
 import { ref, reactive, computed, watch, getCurrentInstance, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { getKnowledge, listDocuments, deleteDocument, processDocument, getProcessStatus, getDocumentContent, getDocStats } from '@/api/ai/knowledge'
+import { getKnowledge, listDocuments, deleteDocument, processDocument, getProcessStatus, getDocumentContent, getDocStats, getDocumentFile } from '@/api/ai/knowledge'
 import { getToken } from '@/utils/auth'
 
 const route = useRoute()
@@ -174,9 +174,7 @@ const previewHtml = ref('')
 const previewType = ref('')
 const previewFileName = ref('')
 const previewDocId = ref<number | null>(null)
-const previewPdfUrl = computed(() => {
-  return import.meta.env.VITE_APP_BASE_API + '/ai/document/' + previewDocId.value + '/file'
-})
+const previewBlobUrl = ref('')
 
 // ==================== 处理 ====================
 const processOpen = ref(false)
@@ -263,7 +261,16 @@ function handleView(row: any) {
   const ext = (row.fileType || '').toLowerCase()
   if (ext === 'pdf') {
     previewType.value = 'pdf'
-    previewLoading.value = false
+    getDocumentFile(row.docId).then((res: any) => {
+      const blob = new Blob([res], { type: 'application/pdf' })
+      if (previewBlobUrl.value) { URL.revokeObjectURL(previewBlobUrl.value) }
+      previewBlobUrl.value = URL.createObjectURL(blob)
+      previewLoading.value = false
+    }).catch(() => {
+      proxy.$modal.msgError('预览失败')
+      previewLoading.value = false
+      previewOpen.value = false
+    })
   } else if (ext === 'md') {
     getDocumentContent(row.docId).then((res: any) => {
       previewHtml.value = (res.data || '').replace(/\n/g, '<br/>')
@@ -333,7 +340,7 @@ function stopPolling() {
 
 function closeProcess() { stopPolling(); processOpen.value = false }
 
-onBeforeUnmount(() => stopPolling())
+onBeforeUnmount(() => { stopPolling(); if (previewBlobUrl.value) { URL.revokeObjectURL(previewBlobUrl.value) } })
 
 function formatFileSize(size: number): string {
   if (!size) return '0 B'

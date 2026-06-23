@@ -33,6 +33,15 @@ export function deleteDocument(docId) {
   return request({ url: '/ai/kb/doc/' + docId, method: 'delete' })
 }
 
+// ==================== 文档文件 ====================
+export function getDocumentFile(docId: number) {
+  return request({
+    url: '/ai/document/' + docId + '/file',
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
 // ==================== 文档处理 ====================
 export function processDocument(docId) {
   return request({ url: '/ai/document/process/' + docId, method: 'post' })
