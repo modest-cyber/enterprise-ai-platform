@@ -3,15 +3,22 @@
 import asyncio
 import json
 import logging
-from fastapi import APIRouter
+from typing import Optional
+
+import jwt as pyjwt
+from fastapi import APIRouter, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app import settings
+from app.internal_client import InternalClient
 from app.llm.client import LLMClient
 from app.llm.exceptions import LLMException
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+internal_client = InternalClient()
+JWT_SECRET = settings.jwt_secret
 
 
 # ── 请求 / 响应模型 ──
@@ -23,6 +30,14 @@ class ChatRequest(BaseModel):
     model: dict = Field(default_factory=dict, description="模型配置")
 
 
+class ChatStreamRequest(BaseModel):
+    """流式聊天请求（供前端直接调用）"""
+    conversationId: Optional[int] = Field(default=None, description="会话 ID，空则自动创建")
+    message: str = Field(..., min_length=1, max_length=4000, description="用户输入消息")
+    agentId: Optional[int] = Field(default=None, description="Agent ID")
+    modelId: Optional[int] = Field(default=None, description="模型 ID")
+
+
 class RagRequest(BaseModel):
     query: str = Field(..., description="检索查询")
     documents: list[dict] = Field(default_factory=list, description="文档列表")
@@ -31,6 +46,29 @@ class RagRequest(BaseModel):
 
 class EmbedRequest(BaseModel):
     text: str = Field(..., description="待向量化文本")
+
+
+# ── 辅助函数 ──
+
+def _verify_user_jwt(authorization: str) -> dict:
+    """验证用户 JWT，返回 payload 或抛出异常"""
+    if not authorization:
+        raise ValueError("缺少 Authorization 头")
+
+    token = authorization.replace("Bearer ", "")
+    if not token or token == authorization:
+        raise ValueError("Authorization 格式错误，需要 Bearer token")
+
+    return pyjwt.decode(token, JWT_SECRET, algorithms=["HS512"])
+
+
+def _auth_error(message: str):
+    """生成 SSE 格式的认证错误"""
+    async def gen():
+        err = {"type": "error", "code": 401, "message": message}
+        yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 # ── 路由 ──
@@ -82,36 +120,135 @@ def _build_messages(req: ChatRequest) -> list[dict]:
 
 
 @router.post("/chat/stream")
-async def chat_stream(req: ChatRequest):
-    model = req.model
-    if not model or not model.get("provider") or not model.get("modelName") or not model.get("baseUrl"):
-        return StreamingResponse(_mock_stream(req), media_type="text/event-stream")
+async def chat_stream(
+    req: ChatStreamRequest,
+    authorization: str = Header(default=""),
+):
+    """
+    流式聊天 — 前端直接连接，SSE 输出
 
-    async def generate():
+    流程：
+    1. 验证用户 JWT
+    2. 获取内部 JWT，调用 Spring Boot 获取/创建会话配置
+    3. 组装 messages + 调用 LLM stream:true
+    4. StreamingResponse 输出 SSE 事件
+    5. 流结束后异步保存消息到 Spring Boot
+    """
+    # 1. 验证用户 JWT
+    try:
+        user_payload = _verify_user_jwt(authorization)
+    except ValueError as e:
+        return _auth_error(str(e))
+    except pyjwt.ExpiredSignatureError:
+        return _auth_error("Token 已过期")
+    except pyjwt.PyJWTError as e:
+        return _auth_error(f"Token 无效: {e}")
+
+    username = user_payload.get("sub", "unknown")
+    user_id = user_payload.get("userId")  # TokenService 中新增的 claims
+    if not user_id:
+        user_id = username  # 兜底：如果没 userId，用 username
+    logger.info("用户 %s (userId=%s) 发起流式聊天: conversationId=%s, agentId=%s, modelId=%s",
+                username, user_id, req.conversationId, req.agentId, req.modelId)
+
+    # 2. 获取或创建会话配置
+    config = None
+    history = []
+    model_config = {}
+    agent_config = {}
+    conversation_id = req.conversationId
+
+    try:
+        if req.conversationId:
+            config = await internal_client.get_conversation(req.conversationId)
+        else:
+            # 新会话：先创建会话再获取配置
+            title = req.message[:20].replace("\n", " ").strip() or "新会话"
+            create_body = {
+                "userId": user_id,
+                "title": title,
+                "agentId": req.agentId,
+                "modelId": req.modelId,
+            }
+            config = await internal_client.create_conversation(create_body)
+            conversation_id = config.get("conversationId")
+
+        if config:
+            history = config.get("history", [])
+            agent_config = config.get("agent") or {}
+            model_config = config.get("model") or {}
+    except Exception as e:
+        logger.error("获取/创建会话配置失败: %s", e)
+        async def config_error_stream():
+            err = {"type": "error", "code": 500, "message": f"会话配置获取失败: {e}"}
+            yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
+        return StreamingResponse(config_error_stream(), media_type="text/event-stream")
+
+    # 3. 组装 messages
+    system_prompt = agent_config.get("systemPrompt", "")
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    for h in history:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    messages.append({"role": "user", "content": req.message})
+
+    # 4. 创建 LLM 客户端
+    if model_config and model_config.get("provider") and model_config.get("modelName"):
+        llm_client = LLMClient(
+            provider=model_config["provider"],
+            model_name=model_config["modelName"],
+            base_url=model_config["baseUrl"],
+            api_key=model_config.get("apiKey", ""),
+            temperature=model_config.get("temperature", 0.7),
+            max_tokens=model_config.get("maxTokens", 4096),
+        )
+    else:
+        llm_client = None
+
+    # 5. SSE 流式响应
+    async def event_stream():
+        full_reply = ""
+
         try:
-            client = LLMClient(
-                provider=model["provider"],
-                model_name=model["modelName"],
-                base_url=model["baseUrl"],
-                api_key=model.get("apiKey", ""),
-                temperature=model.get("temperature", 0.7),
-                max_tokens=model.get("maxTokens", 4096),
-            )
-            messages = _build_messages(req)
-            reply = await client.chat_str(messages)
+            if llm_client:
+                async for chunk in llm_client.chat_stream(messages):
+                    full_reply += chunk
+                    token_event = {"type": "token", "content": chunk}
+                    yield f"event: token\ndata: {json.dumps(token_event, ensure_ascii=False)}\n\n"
+            else:
+                # Mock 流式（无模型配置时兜底）
+                mock_reply = _mock_reply(req.message)
+                for ch in mock_reply:
+                    full_reply += ch
+                    token_event = {"type": "token", "content": ch}
+                    yield f"event: token\ndata: {json.dumps(token_event, ensure_ascii=False)}\n\n"
+                    await asyncio.sleep(0.03)
 
-            for i, ch in enumerate(reply):
-                delta = {"type": "delta", "index": i, "content": ch}
-                yield f"data: {json.dumps(delta, ensure_ascii=False)}\n\n"
-                await asyncio.sleep(0.02)
-            done = {"type": "done", "content": reply}
-            yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n"
+            # 6. 异步保存消息
+            if conversation_id:
+                try:
+                    await internal_client.save_message({
+                        "conversationId": conversation_id,
+                        "userMessage": req.message,
+                        "aiMessage": full_reply,
+                    })
+                except Exception as e:
+                    logger.error("保存消息失败（聊天不受影响）: %s", e)
+
+            done_event = {"type": "done", "content": full_reply}
+            yield f"event: done\ndata: {json.dumps(done_event, ensure_ascii=False)}\n\n"
+
         except LLMException as e:
-            logger.error("流式 LLM 调用失败: %s", e)
-            err = {"type": "error", "message": str(e)}
-            yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+            logger.error("LLM 流式调用失败: %s", e)
+            err = {"type": "error", "code": 500, "message": f"LLM 调用失败: {e}"}
+            yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.error("流式聊天异常: %s", e)
+            err = {"type": "error", "code": 500, "message": str(e)}
+            yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/rag")
@@ -179,16 +316,6 @@ async def embed(req: EmbedRequest):
 
 def _mock_reply(message: str) -> str:
     return f"[Mock LLM] 收到您的消息：「{message}」。这是模拟回复，实际部署时将调用真实大模型。"
-
-
-async def _mock_stream(req: ChatRequest):
-    reply = _mock_reply(req.message)
-    for i, ch in enumerate(reply):
-        delta = {"type": "delta", "index": i, "content": ch}
-        yield f"data: {json.dumps(delta, ensure_ascii=False)}\n\n"
-        await asyncio.sleep(0.05)
-    done = {"type": "done", "content": reply}
-    yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n"
 
 
 def _mock_rag_result(req: RagRequest) -> dict:

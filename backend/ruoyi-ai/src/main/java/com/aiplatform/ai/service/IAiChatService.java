@@ -5,6 +5,8 @@ import com.aiplatform.ai.domain.AiConversation;
 import com.aiplatform.ai.domain.AiMessage;
 import com.aiplatform.ai.domain.dto.ChatRequestDto;
 import com.aiplatform.ai.domain.dto.ChatResponseDto;
+import com.aiplatform.ai.domain.dto.ConversationConfigDto;
+import com.aiplatform.ai.domain.dto.MessageSaveRequestDto;
 
 /**
  * AI 聊天服务接口 — 统一管理会话 CRUD 与消息发送
@@ -39,4 +41,23 @@ public interface IAiChatService {
 
     /** 重新生成会话标题 */
     String generateTitle(Long id);
+
+    /**
+     * 获取会话配置（供 FastAPI 内部接口调用）
+     * 返回会话信息、Agent 配置、Model 配置、历史消息
+     */
+    ConversationConfigDto getConversationConfig(Long conversationId);
+
+    /**
+     * 创建会话并返回配置（供 FastAPI 内部接口调用）
+     * 用于新会话场景：FastAPI 收到 conversationId=null 时，先创建会话再聊天
+     */
+    ConversationConfigDto createConversationFromInternal(Long userId, String title,
+                                                          Long agentId, Long modelId);
+
+    /**
+     * 保存消息（供 FastAPI 内部接口调用）
+     * 同时保存用户消息和 AI 回复
+     */
+    void saveMessage(MessageSaveRequestDto dto);
 }
