@@ -25,6 +25,11 @@ export function delModel(ids) {
   return request({ url: '/ai/model/' + ids, method: 'delete' })
 }
 
+// 获取所有启用的模型（下拉列表用）
+export function listEnabledModels() {
+  return request({ url: '/ai/model/enabled', method: 'get' })
+}
+
 // 测试模型连接
 export function testModel(id) {
   return request({ url: '/ai/model/test/' + id, method: 'get' })

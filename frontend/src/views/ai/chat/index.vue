@@ -118,7 +118,7 @@ import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
 import { listEnabledAgents } from '@/api/ai/agent'
-import { listModel } from '@/api/ai/model'
+import { listEnabledModels } from '@/api/ai/model'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
@@ -295,8 +295,8 @@ function fetchAgentOptions() {
 }
 
 function fetchModelOptions() {
-  listModel({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
-    modelOptions.value = response.rows || []
+  listEnabledModels().then((response: any) => {
+    modelOptions.value = response.data || []
   })
 }
 

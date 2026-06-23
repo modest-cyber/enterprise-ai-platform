@@ -96,6 +96,16 @@ public class ModelController extends BaseController {
     }
 
     /**
+     * 获取所有启用的模型（不分页，用于下拉列表）
+     */
+    @PreAuthorize("@ss.hasPermi('ai:model:query')")
+    @GetMapping("/enabled")
+    public AjaxResult enabled() {
+        List<AiModel> list = modelConfigService.selectEnabledModels();
+        return success(list);
+    }
+
+    /**
      * 测试模型连通性
      */
     @PreAuthorize("@ss.hasPermi('ai:model:query')")

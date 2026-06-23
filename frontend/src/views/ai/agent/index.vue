@@ -201,7 +201,7 @@
 <script setup lang="ts" name="Agent">
 import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
 import { listAgent, getAgent, addAgent, updateAgent, delAgent, executeAgent, submitAgent, getTaskStatus, cancelTask } from '@/api/ai/agent'
-import { listModel } from '@/api/ai/model'
+import { listEnabledModels } from '@/api/ai/model'
 import { listTool } from '@/api/ai/tool'
 const { proxy } = getCurrentInstance() as any
 
@@ -256,10 +256,10 @@ function getToolOptions() {
     toolOptions.value = response.rows || []
   })
 }
-// 获取模型选项列表
+// 获取模型选项列表（仅启用的模型）
 function getModelOptions() {
-  listModel({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
-    modelOptions.value = response.rows || []
+  listEnabledModels().then((response: any) => {
+    modelOptions.value = response.data || []
   })
 }
 // 根据模型ID获取显示名称
