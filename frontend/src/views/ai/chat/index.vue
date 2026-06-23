@@ -85,15 +85,26 @@
             resize="none"
           />
           <div class="chat-input-actions">
-            <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
-              <el-option label="默认" value="" />
-              <el-option
-                v-for="agent in agentOptions"
-                :key="agent.agentId"
-                :label="agent.agentName"
-                :value="agent.agentType"
-              />
-            </el-select>
+            <div class="chat-input-selects">
+              <el-select v-model="modelId" placeholder="选择模型" style="width: 200px" size="default" clearable>
+                <el-option label="默认" value="" />
+                <el-option
+                  v-for="m in modelOptions"
+                  :key="m.modelId"
+                  :label="m.displayName + ' (' + m.modelName + ')'"
+                  :value="m.modelId"
+                />
+              </el-select>
+              <el-select v-model="agentType" placeholder="Agent类型" style="width: 160px" size="default" clearable>
+                <el-option label="默认" value="" />
+                <el-option
+                  v-for="agent in agentOptions"
+                  :key="agent.agentId"
+                  :label="agent.agentName"
+                  :value="agent.agentType"
+                />
+              </el-select>
+            </div>
             <el-button type="primary" icon="Promotion" @click="handleSend" :disabled="sending || !inputMessage.trim()">{{ sending ? '发送中...' : '发送' }}</el-button>
           </div>
         </div>
@@ -109,11 +120,14 @@ import { ChatDotRound, UserFilled, Cpu } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { listConversation, deleteConversation, renameConversation, generateTitle, listMessages, sendChat } from '@/api/ai/chat'
 import { listEnabledAgents } from '@/api/ai/agent'
+import { listModel } from '@/api/ai/model'
 
 const conversationList = ref<any[]>([])
 const currentConversationId = ref<number | null>(null)
 const messages = ref<any[]>([])
 const inputMessage = ref('')
+const modelId = ref<number | null>(null)
+const modelOptions = ref<any[]>([])
 const agentType = ref('')
 const agentOptions = ref<any[]>([])
 const sending = ref(false)
@@ -166,6 +180,7 @@ async function handleSend() {
   try {
     const dto: any = {
       message: message,
+      modelId: modelId.value || null,
       agentType: agentType.value || null
     }
     if (currentConversationId.value) {
@@ -281,9 +296,16 @@ function fetchAgentOptions() {
   })
 }
 
+function fetchModelOptions() {
+  listModel({ pageNum: 1, pageSize: 1000 }).then((response: any) => {
+    modelOptions.value = response.rows || []
+  })
+}
+
 onMounted(() => {
   fetchConversationList()
   fetchAgentOptions()
+  fetchModelOptions()
 })
 </script>
 
@@ -367,4 +389,5 @@ onMounted(() => {
 .message-time { font-size: 12px; color: var(--el-text-color-placeholder, #c0c4cc); margin-top: 4px; }
 .chat-input { padding: 16px 20px; border-top: 1px solid var(--el-border-color-light, #e8e8e8); background-color: var(--el-bg-color, #fff); }
 .chat-input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.chat-input-selects { display: flex; align-items: center; gap: 12px; }
 </style>
