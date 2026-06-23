@@ -9,15 +9,20 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o"
     chroma_persist_dir: str = "./chroma_db"
 
-    # JWT / 内部认证
-    jwt_secret: str = "abcdefghijklmnopqrstuvwxyz"  # 与 Spring Boot token.secret 一致
-    internal_secret: str = "internal-shared-secret"  # 预共享密钥
-    spring_boot_url: str = "http://localhost:8080"   # Spring Boot 地址
+    # Embedding
+    embedding_provider: str = "ollama"
+    embedding_device: str = "cpu"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_embedding_model: str = "nomic-embed-text"
+
+    # Milvus
+    milvus_mode: str = "docker"
+    milvus_host: str = "localhost"
+    milvus_port: str = "19530"
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        extra = "ignore"
 
 
 settings = Settings()

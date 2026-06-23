@@ -80,7 +80,9 @@ class HealthChecker:
             has_coll = svc.has_collection()
             result = {
                 "status": True,
-                "db_path": svc.db_path,
+                "mode": svc._mode,
+                "host": svc._host if svc._mode == "docker" else "local",
+                "port": svc._port if svc._mode == "docker" else "-",
                 "collection": COLLECTION_NAME,
                 "exists": has_coll,
                 "total_vectors": svc.count() if has_coll else 0,

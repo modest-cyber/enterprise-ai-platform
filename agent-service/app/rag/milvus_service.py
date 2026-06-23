@@ -1,9 +1,10 @@
-"""Milvus Lite 服务 — Collection 生命周期管理 + CRUD"""
+"""Milvus 服务 — 支持 Docker Milvus + Milvus Lite，Collection 生命周期管理 + CRUD"""
 
 import logging
+import os
 from pathlib import Path
 
-from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType, connections
 
 from .exceptions import MilvusException
 
@@ -15,19 +16,34 @@ DIM = 768
 
 class MilvusService:
 
-    def __init__(self, db_path: str = "./data/milvus.db"):
-        self.db_path = db_path
+    def __init__(self):
+        self._mode = os.getenv("MILVUS_MODE", "lite").lower()
+        self._host = os.getenv("MILVUS_HOST", "localhost")
+        self._port = os.getenv("MILVUS_PORT", "19530")
+        self._db_path = os.getenv("MILVUS_DB_PATH", "./data/milvus.db")
+        self._uri = os.getenv("MILVUS_URI", "")
+        self._token = os.getenv("MILVUS_TOKEN", "")
         self._client: MilvusClient | None = None
 
-    def _ensure_dir(self):
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+    def _connect_docker(self) -> MilvusClient:
+        uri = self._uri or f"http://{self._host}:{self._port}"
+        logger.info("连接 Docker Milvus: %s", uri)
+        client = MilvusClient(uri=uri, token=self._token or None)
+        return client
+
+    def _connect_lite(self) -> MilvusClient:
+        Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
+        logger.info("连接 Milvus Lite: %s", self._db_path)
+        client = MilvusClient(str(self._db_path))
+        return client
 
     @property
     def client(self) -> MilvusClient:
         if self._client is None:
-            self._ensure_dir()
-            self._client = MilvusClient(str(self.db_path))
-            logger.info("Milvus Lite 已连接, db=%s", self.db_path)
+            if self._mode == "docker":
+                self._client = self._connect_docker()
+            else:
+                self._client = self._connect_lite()
         return self._client
 
     def has_collection(self) -> bool:
