@@ -250,22 +250,23 @@ async function handleSend() {
       const createBody: any = { title: message.substring(0, 30) }
       if (agentId.value) createBody.agentId = agentId.value
       if (modelId.value) createBody.modelId = modelId.value
-      const createRes = await createConversation(createBody)
-      const convData = createRes.data
-      currentConversationId.value = convData.conversationId
-      // 插入到会话列表顶部
-      conversationList.value.unshift({
-        conversationId: convData.conversationId,
-        title: message.substring(0, 30),
-        agentType: agentOptions.value.find(a => a.agentId === agentId.value)?.agentName || '',
-        updateTime: new Date().toISOString(),
-        createTime: new Date().toISOString()
-      })
+      await createConversation(createBody)
+      // 后端 createConversation 可能不返回 ID，刷新列表取最新会话
+      const listRes: any = await listConversation({ pageNum: 1, pageSize: 1 })
+      const rows = listRes.rows || []
+      if (rows.length > 0) {
+        currentConversationId.value = rows[0].conversationId
+        conversationList.value = rows
+      } else {
+        throw new Error('未获取到会话ID')
+      }
     } catch (e: any) {
-      ElMessage.error('创建会话失败')
+      ElMessage.error('创建会话失败：' + (e.message || '未知错误'))
       sending.value = false
-      // 移除 AI 占位消息
+      // 移除 AI 占位消息 + 用户消息
       messages.value.pop()
+      messages.value.pop()
+      inputMessage.value = message // 恢复用户输入
       return
     }
   }
