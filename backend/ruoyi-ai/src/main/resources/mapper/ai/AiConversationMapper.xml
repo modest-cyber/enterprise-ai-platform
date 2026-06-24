@@ -49,7 +49,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where conversation_id = #{conversationId}
     </select>
 
-    <insert id="insertConversation" parameterType="AiConversation">
+    <insert id="insertConversation" parameterType="AiConversation" useGeneratedKeys="true" keyProperty="conversationId">
         insert into ai_conversation (
             <if test="userId != null">user_id,</if>
             <if test="title != null and title != ''">title,</if>

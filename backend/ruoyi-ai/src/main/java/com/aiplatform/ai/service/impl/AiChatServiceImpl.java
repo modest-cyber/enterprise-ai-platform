@@ -1,5 +1,6 @@
 package com.aiplatform.ai.service.impl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import com.aiplatform.ai.domain.AgentConfig;
 import com.aiplatform.ai.domain.AiConversation;
 import com.aiplatform.ai.domain.AiMessage;
 import com.aiplatform.ai.domain.AiModel;
+import com.aiplatform.ai.domain.AiTool;
 import com.aiplatform.ai.domain.dto.ChatRequestDto;
 import com.aiplatform.ai.domain.dto.ChatResponseDto;
 import com.aiplatform.ai.domain.dto.ConversationConfigDto;
@@ -16,6 +18,7 @@ import com.aiplatform.ai.domain.dto.MessageSaveRequestDto;
 import java.util.stream.Collectors;
 import com.aiplatform.ai.mapper.AiConversationMapper;
 import com.aiplatform.ai.mapper.AiMessageMapper;
+import com.aiplatform.ai.mapper.AiToolMapper;
 import com.aiplatform.ai.service.IAgentService;
 import com.aiplatform.ai.service.IAiChatService;
 import com.aiplatform.ai.service.IModelConfigService;
@@ -23,6 +26,8 @@ import com.aiplatform.common.core.domain.AjaxResult;
 import com.aiplatform.common.exception.ServiceException;
 import com.aiplatform.common.utils.DateUtils;
 import com.aiplatform.common.utils.SecurityUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +43,9 @@ public class AiChatServiceImpl implements IAiChatService {
     private AiMessageMapper messageMapper;
 
     @Resource
+    private AiToolMapper aiToolMapper;
+
+    @Resource
     private ChatAgentClient chatAgentClient;
 
     @Resource
@@ -45,6 +53,8 @@ public class AiChatServiceImpl implements IAiChatService {
 
     @Resource
     private IModelConfigService modelConfigService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==================== 会话 CRUD ====================
 
@@ -131,9 +141,12 @@ public class AiChatServiceImpl implements IAiChatService {
         dto.setTitle(conversation.getTitle());
         dto.setUserId(conversation.getUserId());
 
-        // Agent 配置
+        // Agent 配置 — agentId 是聊天主入口
+        AgentConfig agent = null;
+        Long resolvedModelId = conversation.getModelId();
+
         if (conversation.getAgentId() != null) {
-            AgentConfig agent = agentService.selectAgentById(conversation.getAgentId());
+            agent = agentService.selectAgentById(conversation.getAgentId());
             if (agent != null) {
                 ConversationConfigDto.AgentInfo agentInfo = new ConversationConfigDto.AgentInfo();
                 agentInfo.setAgentId(agent.getAgentId());
@@ -143,13 +156,48 @@ public class AiChatServiceImpl implements IAiChatService {
                 agentInfo.setMaxIterations(agent.getMaxIterations());
                 agentInfo.setTemperature(agent.getTemperature());
                 agentInfo.setTimeoutSeconds(agent.getTimeoutSeconds());
+
+                // ★ Agent 绑定的模型 ID — 优先使用此模型
+                agentInfo.setModelId(agent.getModelId());
+                if (agent.getModelId() != null) {
+                    resolvedModelId = agent.getModelId();
+                }
+
+                // ★ 加载 Agent 绑定的工具定义
+                if (agent.getToolsJson() != null && !agent.getToolsJson().isBlank()) {
+                    try {
+                        List<Long> toolIds = objectMapper.readValue(
+                                agent.getToolsJson(), new TypeReference<List<Long>>() {});
+                        if (toolIds != null && !toolIds.isEmpty()) {
+                            List<ConversationConfigDto.ToolDefinition> tools = new ArrayList<>();
+                            for (Long toolId : toolIds) {
+                                AiTool tool = aiToolMapper.selectToolById(toolId);
+                                if (tool != null && Integer.valueOf(1).equals(tool.getIsEnabled())) {
+                                    ConversationConfigDto.ToolDefinition td =
+                                            new ConversationConfigDto.ToolDefinition();
+                                    td.setToolId(tool.getToolId());
+                                    td.setToolName(tool.getToolName());
+                                    td.setDisplayName(tool.getDisplayName());
+                                    td.setToolType(tool.getToolType());
+                                    td.setDescription(tool.getDescription());
+                                    td.setInputSchema(tool.getInputSchema());
+                                    tools.add(td);
+                                }
+                            }
+                            agentInfo.setTools(tools);
+                        }
+                    } catch (Exception e) {
+                        log.warn("解析 Agent {} 的工具列表失败: {}", agent.getAgentId(), e.getMessage());
+                    }
+                }
+
                 dto.setAgent(agentInfo);
             }
         }
 
-        // Model 配置
-        if (conversation.getModelId() != null) {
-            AiModel model = modelConfigService.selectModelById(conversation.getModelId());
+        // Model 配置 — 优先使用 Agent 绑定的模型
+        if (resolvedModelId != null) {
+            AiModel model = modelConfigService.selectModelById(resolvedModelId);
             if (model != null) {
                 ConversationConfigDto.ModelInfo modelInfo = new ConversationConfigDto.ModelInfo();
                 modelInfo.setModelId(model.getModelId());

@@ -151,6 +151,122 @@ def _build_messages(req: ChatRequest) -> list[dict]:
     return messages
 
 
+def _build_agent_system_prompt(agent_config: dict, user_message: str = "") -> str:
+    """
+    构建完整的 Agent System Prompt，包含：
+    1. Agent 的系统提示词
+    2. 工具定义（名称、描述、参数 Schema）
+    3. 知识库上下文（RAG 检索结果）
+
+    agent_config 格式（来自 Spring Boot ConversationConfigDto.AgentInfo）:
+    {
+        "agentId": 1,
+        "agentName": "xxx",
+        "agentType": "planner",
+        "systemPrompt": "...",
+        "modelId": 2,
+        "maxIterations": 5,
+        "temperature": 0.7,
+        "timeoutSeconds": 300,
+        "tools": [
+            {
+                "toolId": 1,
+                "toolName": "search_knowledge",
+                "displayName": "知识库检索",
+                "toolType": "http_api",
+                "description": "检索企业知识库获取相关文档内容",
+                "inputSchema": "{...}"
+            }
+        ]
+    }
+    """
+    parts = []
+
+    # 1. Agent 系统提示词
+    base_prompt = (agent_config.get("systemPrompt") or "").strip()
+    if base_prompt:
+        parts.append(base_prompt)
+
+    # 2. 工具定义
+    tools = agent_config.get("tools") or []
+    if tools:
+        tool_lines = ["\n## 可用工具\n"]
+        tool_lines.append("你可以使用以下工具来完成任务。调用工具时，请在回复中指明工具名称和参数。\n")
+        for i, tool in enumerate(tools, 1):
+            tool_name = tool.get("toolName", "")
+            tool_display = tool.get("displayName", tool_name)
+            tool_desc = tool.get("description", "")
+            tool_type = tool.get("toolType", "function")
+            input_schema = tool.get("inputSchema", "{}")
+
+            tool_lines.append(f"### {i}. {tool_display} (`{tool_name}`)")
+            tool_lines.append(f"- **类型**: {tool_type}")
+            tool_lines.append(f"- **描述**: {tool_desc}")
+            tool_lines.append(f"- **参数**: {_format_tool_schema(input_schema)}")
+            tool_lines.append("")
+
+        parts.append("\n".join(tool_lines))
+
+    # 3. 知识库上下文（RAG）
+    # 当 agentType 为 "rag" 或 systemPrompt 包含 "知识库" 时，加载 RAG 上下文
+    agent_type = agent_config.get("agentType", "")
+    if "rag" in agent_type.lower() or "知识库" in (agent_config.get("agentName") or ""):
+        kb_context = _load_knowledge_context(user_message)
+        if kb_context:
+            parts.append("\n## 知识库参考文档\n")
+            parts.append("请基于以下文档内容回答问题：\n")
+            parts.append(kb_context)
+
+    return "\n".join(parts)
+
+
+def _format_tool_schema(schema_str: str) -> str:
+    """将工具 JSON Schema 格式化为可读文本"""
+    if not schema_str:
+        return "无"
+    try:
+        schema = json.loads(schema_str) if isinstance(schema_str, str) else schema_str
+        # 取顶层 properties 展示
+        props = schema.get("properties", {})
+        if not props:
+            return str(schema_str)[:200]
+        lines = []
+        required_fields = schema.get("required", [])
+        for name, prop in props.items():
+            prop_type = prop.get("type", "string")
+            prop_desc = prop.get("description", "")
+            required = "（必填）" if name in required_fields else ""
+            lines.append(f"  - `{name}`: {prop_type} {required} — {prop_desc}")
+        return "\n".join(lines)
+    except (json.JSONDecodeError, TypeError):
+        return str(schema_str)[:200]
+
+
+def _load_knowledge_context(user_message: str) -> str:
+    """从 RAG 加载与用户消息相关的知识库上下文"""
+    try:
+        from app.rag.retriever import get_retriever
+        retriever = get_retriever()
+        if retriever is None:
+            return ""
+        docs = retriever.retrieve(user_message, top_k=3)
+        if not docs:
+            return ""
+        contexts = []
+        for i, doc in enumerate(docs, 1):
+            content = doc.get("content") or doc.get("text") or str(doc)
+            source = doc.get("source") or doc.get("metadata", {}).get("source", "")
+            if len(content) > 500:
+                content = content[:500] + "..."
+            contexts.append(f"[文档{i}] {content}")
+            if source:
+                contexts[-1] += f"\n  (来源: {source})"
+        return "\n\n".join(contexts)
+    except Exception as e:
+        logger.warning("加载知识库上下文失败: %s", e)
+        return ""
+
+
 @router.post("/chat/stream")
 async def chat_stream(
     req: ChatStreamRequest,
@@ -216,8 +332,8 @@ async def chat_stream(
             yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
         return StreamingResponse(config_error_stream(), media_type="text/event-stream")
 
-    # 3. 组装 messages
-    system_prompt = agent_config.get("systemPrompt", "")
+    # 3. 构建增强 System Prompt（系统提示词 + 工具定义 + 知识库上下文）
+    system_prompt = _build_agent_system_prompt(agent_config, req.message)
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -225,18 +341,27 @@ async def chat_stream(
         messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
     messages.append({"role": "user", "content": req.message})
 
-    # 4. 创建 LLM 客户端
+    # 4. 创建 LLM 客户端 — 使用 Agent 配置的温度/maxTokens 覆盖模型默认值
     if model_config and model_config.get("provider") and model_config.get("modelName"):
+        agent_temperature = agent_config.get("temperature")
+        agent_max_tokens = model_config.get("maxTokens", 4096)
+        agent_timeout = agent_config.get("timeoutSeconds", 300)
+
         llm_client = LLMClient(
             provider=model_config["provider"],
             model_name=model_config["modelName"],
             base_url=model_config["baseUrl"],
             api_key=model_config.get("apiKey", ""),
-            temperature=model_config.get("temperature", 0.7),
-            max_tokens=model_config.get("maxTokens", 4096),
+            temperature=agent_temperature if agent_temperature is not None else model_config.get("temperature", 0.7),
+            max_tokens=agent_max_tokens,
+            timeout=agent_timeout,
         )
+        logger.info("LLM 客户端创建: provider=%s, model=%s, temperature=%s",
+                    model_config["provider"], model_config["modelName"],
+                    agent_temperature if agent_temperature is not None else model_config.get("temperature"))
     else:
         llm_client = None
+        logger.warning("无有效模型配置，将使用 Mock 回复")
 
     # 5. SSE 流式响应
     async def event_stream():

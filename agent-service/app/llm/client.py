@@ -101,7 +101,13 @@ class LLMClient:
             except httpx.ConnectError as e:
                 raise LLMConnectionError(f"LLM 流式连接失败: {url}: {e}")
             except httpx.HTTPStatusError as e:
-                raise LLMCallError(f"LLM 流式 HTTP {e.response.status_code}: {e.response.text[:500]}")
+                # 流式响应不能直接访问 .text，需要先 read
+                try:
+                    await e.response.aread()
+                    err_body = e.response.text[:500]
+                except Exception:
+                    err_body = "(无法读取响应体)"
+                raise LLMCallError(f"LLM 流式 HTTP {e.response.status_code}: {err_body}")
 
     async def _call_ollama_stream(self, messages: list[dict]) -> AsyncGenerator[str, None]:
         url = f"{self.base_url}/api/chat"
@@ -139,7 +145,12 @@ class LLMClient:
             except httpx.ConnectError as e:
                 raise LLMConnectionError(f"Ollama 流式连接失败: {url}: {e}")
             except httpx.HTTPStatusError as e:
-                raise LLMCallError(f"Ollama 流式 HTTP {e.response.status_code}: {e.response.text[:500]}")
+                try:
+                    await e.response.aread()
+                    err_body = e.response.text[:500]
+                except Exception:
+                    err_body = "(无法读取响应体)"
+                raise LLMCallError(f"Ollama 流式 HTTP {e.response.status_code}: {err_body}")
 
     async def _call_openai_compatible(self, messages: list[dict]) -> dict:
         url = f"{self.base_url}/v1/chat/completions"
@@ -166,6 +177,7 @@ class LLMClient:
             except httpx.HTTPStatusError as e:
                 raise LLMCallError(f"LLM HTTP {e.response.status_code}: {e.response.text[:500]}")
 
+        await resp.aread()
         data = resp.json()
         usage = data.get("usage", {})
         choices = data.get("choices", [])
@@ -209,6 +221,7 @@ class LLMClient:
             except httpx.HTTPStatusError as e:
                 raise LLMCallError(f"Ollama HTTP {e.response.status_code}: {e.response.text[:500]}")
 
+        await resp.aread()
         data = resp.json()
         message = data.get("message", {})
         content = message.get("content", "")

@@ -33,6 +33,7 @@ class InternalClient:
                 timeout=10,
             )
             resp.raise_for_status()
+            await resp.aread()
             data = resp.json()
 
         if data.get("code") != 200:
@@ -61,6 +62,7 @@ class InternalClient:
                 timeout=10,
             )
             resp.raise_for_status()
+            await resp.aread()
             data = resp.json()
 
         if data.get("code") != 200:
@@ -80,6 +82,7 @@ class InternalClient:
                 timeout=10,
             )
             resp.raise_for_status()
+            await resp.aread()
             data = resp.json()
 
         if data.get("code") != 200:
@@ -100,6 +103,7 @@ class InternalClient:
                 timeout=10,
             )
             resp.raise_for_status()
+            await resp.aread()
             data = resp.json()
 
         if data.get("code") != 200:

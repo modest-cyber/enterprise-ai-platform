@@ -28,9 +28,25 @@ public class ConversationConfigDto {
         private String agentName;
         private String agentType;
         private String systemPrompt;
+        /** Agent 绑定的模型 ID — 聊天时优先使用此模型 */
+        private Long modelId;
         private Integer maxIterations;
         private Double temperature;
         private Integer timeoutSeconds;
+        /** Agent 绑定的工具定义列表（包含名称、描述、参数 Schema） */
+        private List<ToolDefinition> tools;
+    }
+
+    @Getter
+    @Setter
+    public static class ToolDefinition {
+        private Long toolId;
+        private String toolName;
+        private String displayName;
+        private String toolType;
+        private String description;
+        /** 输入参数 JSON Schema 字符串 */
+        private String inputSchema;
     }
 
     @Getter

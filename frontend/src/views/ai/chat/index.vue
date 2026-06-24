@@ -250,16 +250,20 @@ async function handleSend() {
       const createBody: any = { title: message.substring(0, 30) }
       if (agentId.value) createBody.agentId = agentId.value
       if (modelId.value) createBody.modelId = modelId.value
-      await createConversation(createBody)
-      // 后端 createConversation 可能不返回 ID，刷新列表取最新会话
-      const listRes: any = await listConversation({ pageNum: 1, pageSize: 1 })
-      const rows = listRes.rows || []
-      if (rows.length > 0) {
-        currentConversationId.value = rows[0].conversationId
-        conversationList.value = rows
-      } else {
+      const createRes = await createConversation(createBody)
+      // 优先用返回值（修复后 data 是自增 ID），兜底查列表
+      let newId: number = createRes.data
+      if (!newId) {
+        const listRes: any = await listConversation({ pageNum: 1, pageSize: 1 })
+        const rows = listRes.rows || []
+        newId = rows.length > 0 ? rows[0].conversationId : 0
+      }
+      if (!newId) {
         throw new Error('未获取到会话ID')
       }
+      currentConversationId.value = newId
+      // 刷新完整会话列表到左侧栏
+      fetchConversationList()
     } catch (e: any) {
       ElMessage.error('创建会话失败：' + (e.message || '未知错误'))
       sending.value = false
