@@ -12,6 +12,7 @@
           <el-option label="Review" value="review" />
           <el-option label="Tool" value="tool" />
           <el-option label="Custom" value="custom" />
+          <el-option label="Forge" value="forge" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
@@ -83,6 +84,7 @@
                 <el-option label="Review" value="review" />
                 <el-option label="Tool" value="tool" />
                 <el-option label="Custom" value="custom" />
+                <el-option label="Forge" value="forge" />
               </el-select>
             </el-form-item>
           </el-col>
