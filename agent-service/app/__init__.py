@@ -1,5 +1,22 @@
+import logging
+import sys
+
 from fastapi import FastAPI, HTTPException
 from pydantic_settings import BaseSettings
+
+# ── 日志配置 ──────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+# 抑制第三方库的 DEBUG 日志
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("pymilvus").setLevel(logging.WARNING)
+# ──────────────────────────────────────────────────────────
 
 
 class Settings(BaseSettings):

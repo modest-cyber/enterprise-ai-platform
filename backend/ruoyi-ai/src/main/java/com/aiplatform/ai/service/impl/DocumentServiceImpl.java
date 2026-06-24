@@ -261,8 +261,15 @@ public class DocumentServiceImpl implements IDocumentService {
                 doc.setContentText(extractText(doc.getFileType(), filePath));
             }
 
+            // 从知识库配置读取 chunkSize / chunkOverlap
+            KbKnowledge knowledge = knowledgeMapper.selectKnowledgeById(doc.getKbId());
+            int chunkSize = (knowledge != null && knowledge.getChunkSize() != null) ? knowledge.getChunkSize() : 512;
+            int chunkOverlap = (knowledge != null && knowledge.getChunkOverlap() != null) ? knowledge.getChunkOverlap() : 50;
+            log.info("[RAG] 知识库配置: kbName={}, chunkSize={}, chunkOverlap={}",
+                    knowledge != null ? knowledge.getName() : "unknown", chunkSize, chunkOverlap);
+
             KnowledgeProcessClient.ProcessResult result = knowledgeProcessClient.process(
-                    documentId, filePath, doc.getKbId());
+                    documentId, filePath, doc.getKbId(), chunkSize, chunkOverlap);
 
             if (result.success) {
                 doc.setChunkCount(result.chunkCount);

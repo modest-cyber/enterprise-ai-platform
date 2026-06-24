@@ -1,4 +1,4 @@
-"""Chunk Service — 文本分块，保持语义连续"""
+"""Chunk Service — 文本分块，短段落合并，保持语义连续"""
 
 import logging
 
@@ -9,6 +9,7 @@ DEFAULT_CHUNK_OVERLAP = 100
 
 
 def split_text(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, chunk_overlap: int = DEFAULT_CHUNK_OVERLAP) -> list[str]:
+    """按段落切分后贪婪合并，短段落不再独立成块，chunkSize 真正生效"""
     if not text or not text.strip():
         return []
 
@@ -19,18 +20,41 @@ def split_text(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, chunk_overlap: i
         paragraphs = [text]
 
     chunks = []
+    current = ""
+
     for para in paragraphs:
-        if len(para) <= chunk_size:
-            chunks.append(para)
-        else:
+        # 单段落超过 chunkSize：先结块，再对长段落做句子级切分
+        if len(para) > chunk_size:
+            if current:
+                chunks.append(current)
+                current = ""
             sentences = _split_sentences(para)
             chunks.extend(_merge_sentences(sentences, chunk_size, chunk_overlap))
+            continue
 
-    logger.info("文本分块完成, 原文长度=%d, 段落数=%d, 块数=%d", len(text), len(paragraphs), len(chunks))
+        # 尝试将 para 合并到 current
+        if not current:
+            current = para
+        elif len(current) + 2 + len(para) <= chunk_size:
+            current += "\n\n" + para
+        else:
+            # current 已满，结块并开启新块（带 overlap）
+            chunks.append(current)
+            if chunk_overlap > 0 and len(current) > chunk_overlap:
+                current = current[-chunk_overlap:] + "\n\n" + para
+            else:
+                current = para
+
+    if current:
+        chunks.append(current)
+
+    logger.info("文本分块完成, chunkSize=%d, chunkOverlap=%d, 原文长度=%d, 段落数=%d, 块数=%d",
+                chunk_size, chunk_overlap, len(text), len(paragraphs), len(chunks))
     return chunks
 
 
 def _split_sentences(text: str) -> list[str]:
+    """中文/英文句子切分"""
     delimiters = "。！？!?\n"
     sentences = []
     current = ""
@@ -50,6 +74,7 @@ def _split_sentences(text: str) -> list[str]:
 
 
 def _merge_sentences(sentences: list[str], chunk_size: int, chunk_overlap: int) -> list[str]:
+    """句子级贪婪合并"""
     chunks = []
     i = 0
 
@@ -70,6 +95,7 @@ def _merge_sentences(sentences: list[str], chunk_size: int, chunk_overlap: int) 
 
 
 def _force_split_long_chunk(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
+    """兜底：按字符位置强制切分"""
     chunks = []
     start = 0
     while start < len(text):

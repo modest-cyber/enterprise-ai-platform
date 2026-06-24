@@ -23,6 +23,9 @@ class IndexService:
             if not chunks:
                 raise IndexException(f"文档 {doc_id} 分块结果为空")
 
+            for i, chunk in enumerate(chunks):
+                logger.info("Chunk#%d: len=%d, preview=%s", i, len(chunk), chunk[:200])
+
             vectors = self.embedding.embed_batch(chunks)
 
             records = []

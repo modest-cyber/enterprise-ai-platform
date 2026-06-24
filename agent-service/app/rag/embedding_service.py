@@ -86,6 +86,7 @@ class EmbeddingService:
         return embeddings
 
     def _embed_ollama(self, texts: list[str]) -> list[list[float]]:
+        import math
         import time
         import requests
         start = time.time()
@@ -99,7 +100,12 @@ class EmbeddingService:
                 timeout=120,
             )
             resp.raise_for_status()
-            embeddings.append(resp.json()["embedding"])
+            vec = resp.json()["embedding"]
+            # L2 归一化（Ollama 输出非归一化向量，Milvus COSINE 需要归一化）
+            norm = math.sqrt(sum(v * v for v in vec))
+            if norm > 0:
+                vec = [v / norm for v in vec]
+            embeddings.append(vec)
         elapsed = time.time() - start
-        logger.info("Embedding (Ollama) 完成, count=%d, 耗时 %.2fs", len(texts), elapsed)
+        logger.info("Embedding (Ollama) 完成, count=%d, 耗时 %.2fs, normalized=True", len(texts), elapsed)
         return embeddings

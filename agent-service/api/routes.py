@@ -530,10 +530,18 @@ def _rag_search(knowledge_id: int, query: str, top_k: int = 5) -> dict:
 
     # Step 1: Embedding
     vector = embedding_service.embed_single(query)
+    logger.info("[RAG] 查询向量化完成: query='%s', dim=%d, norm=%.4f",
+                query[:50], len(vector), sum(v * v for v in vector) ** 0.5)
 
     # Step 2: Milvus 检索
     expr = f"kb_id == {knowledge_id}"
     results = milvus_service.search(vector, top_k=top_k, expr=expr)
+
+    logger.info("[RAG] Milvus 原始返回 %d 条结果", len(results))
+    for i, hit in enumerate(results):
+        logger.info("[RAG]   Hit#%d: id=%s, distance=%s, entity keys=%s",
+                    i, hit.get("id", "?"), hit.get("distance", "?"),
+                    list(hit.get("entity", {}).keys()) if hit.get("entity") else "N/A")
 
     # Step 3: 提取 chunks 和 doc_ids
     chunks = []
@@ -550,6 +558,8 @@ def _rag_search(knowledge_id: int, query: str, top_k: int = 5) -> dict:
         })
         if doc_id:
             doc_ids.add(doc_id)
+        logger.info("[RAG]   Chunk doc_id=%s, score=%.4f, len=%d, preview=%s",
+                    doc_id, float(score), len(content), content[:150])
 
     return {
         "chunks": chunks,

@@ -19,6 +19,8 @@ class ProcessRequest(BaseModel):
     documentId: int = Field(..., description="文档ID")
     filePath: str = Field(..., description="文件完整路径")
     knowledgeBaseId: int = Field(..., description="知识库ID")
+    chunkSize: int = Field(default=800, description="切块大小")
+    chunkOverlap: int = Field(default=100, description="重叠大小")
 
 
 class ProcessResponse(BaseModel):
@@ -36,19 +38,30 @@ def _extract_text(file_path: str) -> str:
 @router.post("/process", response_model=ProcessResponse)
 async def process_document(req: ProcessRequest):
     try:
-        logger.info("[RAG] 开始处理文档: docId=%d, kbId=%d, path=%s",
-                    req.documentId, req.knowledgeBaseId, req.filePath)
+        logger.info("[RAG] 开始处理文档: docId=%d, kbId=%d, path=%s, chunkSize=%d, chunkOverlap=%d",
+                    req.documentId, req.knowledgeBaseId, req.filePath,
+                    req.chunkSize, req.chunkOverlap)
 
         text = _extract_text(req.filePath)
+        logger.info("[RAG] 文档文本提取完成: docId=%d, textLength=%d", req.documentId, len(text))
+
+        # 先删除旧向量，保证幂等
+        try:
+            index_service.delete_document(doc_id=req.documentId, kb_id=req.knowledgeBaseId)
+            logger.info("[RAG] 已清理旧向量: docId=%d, kbId=%d", req.documentId, req.knowledgeBaseId)
+        except Exception as del_err:
+            logger.warning("[RAG] 清理旧向量失败(可能无旧数据): %s", del_err)
 
         result = index_service.index_document(
             doc_id=req.documentId,
             kb_id=req.knowledgeBaseId,
             content=text,
+            chunk_size=req.chunkSize,
+            chunk_overlap=req.chunkOverlap,
         )
 
-        logger.info("[RAG] 处理完成: docId=%d, chunkCount=%d",
-                    req.documentId, result["chunk_count"])
+        logger.info("[RAG] 处理完成: docId=%d, chunkSize=%d, chunkOverlap=%d, chunkCount=%d",
+                    req.documentId, req.chunkSize, req.chunkOverlap, result["chunk_count"])
 
         return ProcessResponse(
             success=True,

@@ -82,13 +82,16 @@ public class KnowledgeProcessClient {
         }
     }
 
-    public ProcessResult process(long documentId, String filePath, long knowledgeBaseId) {
-        log.info("[RAG] 调用 Python 处理: docId={}, kbId={}, path={}", documentId, knowledgeBaseId, filePath);
+    public ProcessResult process(long documentId, String filePath, long knowledgeBaseId, int chunkSize, int chunkOverlap) {
+        log.info("[RAG] 调用 Python 处理: docId={}, kbId={}, path={}, chunkSize={}, chunkOverlap={}",
+                documentId, knowledgeBaseId, filePath, chunkSize, chunkOverlap);
 
         Map<String, Object> body = new HashMap<>();
         body.put("documentId", documentId);
         body.put("filePath", filePath);
         body.put("knowledgeBaseId", knowledgeBaseId);
+        body.put("chunkSize", chunkSize);
+        body.put("chunkOverlap", chunkOverlap);
 
         try {
             String rawJson = fastApiClient.post("/knowledge/process", body);

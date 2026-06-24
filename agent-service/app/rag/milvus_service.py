@@ -91,8 +91,21 @@ class MilvusService:
     def delete_by_doc_id(self, doc_id: int, kb_id: int):
         try:
             expr = f'doc_id == {doc_id} and kb_id == {kb_id}'
-            self.client.delete(COLLECTION_NAME, expr)
-            logger.info("Milvus 删除文档, doc_id=%d, kb_id=%d", doc_id, kb_id)
+            # 先查询所有匹配的 ID（pymilvus 表达式 delete 有 bug，只删 1 条）
+            results = self.client.query(
+                collection_name=COLLECTION_NAME,
+                filter=expr,
+                output_fields=["id"],
+                limit=10000,
+            )
+            ids_to_delete = [r["id"] for r in results]
+            if ids_to_delete:
+                result = self.client.delete(COLLECTION_NAME, ids=ids_to_delete)
+                delete_count = result.get("delete_count", len(ids_to_delete)) if isinstance(result, dict) else len(ids_to_delete)
+            else:
+                delete_count = 0
+            logger.info("Milvus 删除文档, doc_id=%d, kb_id=%d, found=%d, deleted=%s",
+                        doc_id, kb_id, len(ids_to_delete), delete_count)
         except Exception as e:
             raise MilvusException(f"Milvus delete 失败: {e}") from e
 
