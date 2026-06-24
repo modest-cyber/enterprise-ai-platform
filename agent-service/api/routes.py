@@ -1,8 +1,11 @@
 """核心路由 — Chat / RAG / Embedding（真实 LLM 调用 + Agent/Model 动态注入）"""
 
 import asyncio
+import base64
 import json
 import logging
+import os
+from logging.handlers import RotatingFileHandler
 from typing import Optional
 
 import jwt as pyjwt
@@ -15,10 +18,36 @@ from app.internal_client import InternalClient
 from app.llm.client import LLMClient
 from app.llm.exceptions import LLMException
 
+# ── 文件日志配置（与 Java 后端日志同目录，方便统一查看）──
+_LOG_DIR = os.environ.get("LOG_PATH", "D:/home/ruoyi/logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
+_LOG_FILE = os.path.join(_LOG_DIR, "agent-service.log")
+
+_file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
+_file_handler.setFormatter(logging.Formatter(
+    "%(asctime)s [%(threadName)s] %(levelname)-5s %(name)s - %(message)s",
+    datefmt="%H:%M:%S",
+))
+_file_handler.setLevel(logging.INFO)
+
+_root_logger = logging.getLogger()
+_root_logger.addHandler(_file_handler)
+_root_logger.setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 internal_client = InternalClient()
-JWT_SECRET = settings.jwt_secret
+
+# jjwt 0.9.1 的 signWith(SignatureAlgorithm, String) 会将字符串当作 Base64 解码后作为 HMAC 密钥
+# jjwt 内部使用 DatatypeConverter.parseBase64Binary()，该函数会将输入截断到最近 4 的倍数再解码
+# 例如 "abcdefghijklmnopqrstuvwxyz" (26 字符) → 实际只用前 24 字符 → 18 字节密钥
+# 不能用补全 padding 的方式，因为那会产生 19 字节密钥，导致签名验证失败
+_JWT_SECRET_RAW = settings.jwt_secret
+_usable_len = (len(_JWT_SECRET_RAW) // 4) * 4
+if _usable_len > 0:
+    JWT_SECRET = base64.b64decode(_JWT_SECRET_RAW[:_usable_len])
+else:
+    JWT_SECRET = _JWT_SECRET_RAW.encode("utf-8")
 
 
 # ── 请求 / 响应模型 ──
@@ -58,6 +87,9 @@ def _verify_user_jwt(authorization: str) -> dict:
     token = authorization.replace("Bearer ", "")
     if not token or token == authorization:
         raise ValueError("Authorization 格式错误，需要 Bearer token")
+
+    logger.info("JWT 验证 — key len=%d bytes, token[:20]=%s",
+                len(JWT_SECRET), token[:20])
 
     return pyjwt.decode(token, JWT_SECRET, algorithms=["HS512"])
 
