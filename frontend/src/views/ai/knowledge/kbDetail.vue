@@ -38,7 +38,7 @@
           :action="uploadUrl"
           :headers="uploadHeaders"
           :data="uploadData"
-          :accept="'.txt,.pdf,.md,.docx,.xlsx,.html'"
+          :accept="'.pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.pptx,.ppt,.csv'"
           :show-file-list="false"
           :on-success="handleUploadSuccess"
           :before-upload="handleBeforeUpload">
@@ -90,12 +90,18 @@
                 v-model:limit="docPage.pageSize" @pagination="getDocList" />
 
     <!-- 文档预览对话框 -->
-    <el-dialog title="文档预览" v-model="previewOpen" width="80%" top="5vh" append-to-body destroy-on-close>
+    <el-dialog :title="'文档预览 - ' + previewFileName" v-model="previewOpen" width="80%" top="5vh" append-to-body destroy-on-close>
       <div class="preview-container">
         <div v-if="previewLoading" class="preview-loading">加载中...</div>
         <iframe v-else-if="previewType === 'pdf'" :src="previewBlobUrl" class="preview-iframe" />
-        <div v-else-if="previewType === 'markdown'" class="preview-markdown" v-html="previewHtml" />
-        <pre v-else class="preview-text">{{ previewContent }}</pre>
+        <div v-else class="preview-text-content">
+          <div class="preview-meta">
+            <el-tag size="small">{{ previewFileType?.toUpperCase() }}</el-tag>
+            <span class="meta-item" v-if="previewMeta?.loaderType">解析器: {{ previewMeta.loaderType }}</span>
+            <span class="meta-item" v-if="previewMeta?.fileSize">大小: {{ formatFileSize(previewMeta.fileSize) }}</span>
+          </div>
+          <pre class="preview-text">{{ previewContent }}</pre>
+        </div>
       </div>
     </el-dialog>
 
@@ -131,7 +137,7 @@
 <script setup lang="ts" name="KbDetail">
 import { ref, reactive, computed, watch, getCurrentInstance, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { getKnowledge, listDocuments, deleteDocument, processDocument, getProcessStatus, getDocumentContent, getDocStats, getDocumentFile } from '@/api/ai/knowledge'
+import { getKnowledge, listDocuments, deleteDocument, processDocument, getProcessStatus, getDocumentContent, getDocStats, getDocumentFile, previewDocument, SUPPORTED_FORMATS } from '@/api/ai/knowledge'
 import { getToken } from '@/utils/auth'
 
 const route = useRoute()
@@ -173,8 +179,10 @@ const previewContent = ref('')
 const previewHtml = ref('')
 const previewType = ref('')
 const previewFileName = ref('')
+const previewFileType = ref('')
 const previewDocId = ref<number | null>(null)
 const previewBlobUrl = ref('')
+const previewMeta = ref<any>({})
 
 // ==================== 处理 ====================
 const processOpen = ref(false)
@@ -236,7 +244,7 @@ function handleDocSelectionChange(selection: any[]) {
 
 function handleBeforeUpload(file: any) {
   const ext = file.name.split('.').pop().toLowerCase()
-  const allowed = ['txt', 'pdf', 'md', 'docx', 'xlsx', 'html']
+  const allowed = SUPPORTED_FORMATS
   if (!allowed.includes(ext)) { proxy.$modal.msgError('不支持的文件类型: ' + ext); return false }
   return true
 }
@@ -255,10 +263,16 @@ function handleDeleteDoc(row?: any) {
 function handleView(row: any) {
   previewDocId.value = row.docId
   previewFileName.value = row.fileName
+  previewFileType.value = (row.fileType || '').toLowerCase()
   previewLoading.value = true
   previewOpen.value = true
+  previewContent.value = ''
+  previewHtml.value = ''
+  previewType.value = ''
+  previewMeta.value = {}
 
   const ext = (row.fileType || '').toLowerCase()
+
   if (ext === 'pdf') {
     previewType.value = 'pdf'
     getDocumentFile(row.docId).then((res: any) => {
@@ -271,16 +285,21 @@ function handleView(row: any) {
       previewLoading.value = false
       previewOpen.value = false
     })
-  } else if (ext === 'md') {
-    getDocumentContent(row.docId).then((res: any) => {
-      previewHtml.value = (res.data || '').replace(/\n/g, '<br/>')
-      previewType.value = 'markdown'
-      previewLoading.value = false
-    })
   } else {
-    getDocumentContent(row.docId).then((res: any) => {
-      previewContent.value = res.data || ''
-      previewType.value = 'text'
+    previewType.value = 'text'
+    previewDocument(row.docId).then((res: any) => {
+      const data = res.data || {}
+      if (data.success) {
+        previewContent.value = data.content || ''
+        previewFileType.value = data.fileType || ext
+        previewMeta.value = data.metadata || {}
+      } else {
+        previewContent.value = data.content || '预览失败'
+        proxy.$modal.msgError('预览失败: ' + (data.content || '未知错误'))
+      }
+      previewLoading.value = false
+    }).catch(() => {
+      previewContent.value = '预览失败，服务不可用'
       previewLoading.value = false
     })
   }
@@ -342,10 +361,11 @@ function closeProcess() { stopPolling(); processOpen.value = false }
 
 onBeforeUnmount(() => { stopPolling(); if (previewBlobUrl.value) { URL.revokeObjectURL(previewBlobUrl.value) } })
 
-function formatFileSize(size: number): string {
-  if (!size) return '0 B'
+function formatFileSize(size: any): string {
+  const n = Number(size) || 0
+  if (!n) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0, s = size
+  let i = 0, s = n
   while (s >= 1024 && i < units.length - 1) { s /= 1024; i++ }
   return s.toFixed(1) + ' ' + units[i]
 }

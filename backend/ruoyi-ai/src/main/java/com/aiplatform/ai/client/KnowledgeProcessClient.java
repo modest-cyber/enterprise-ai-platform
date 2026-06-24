@@ -1,9 +1,10 @@
 package com.aiplatform.ai.client;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import com.aiplatform.common.core.domain.AjaxResult;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,50 @@ public class KnowledgeProcessClient {
             this.chunkCount = chunkCount;
             this.vectorCount = vectorCount;
             this.message = message;
+        }
+    }
+
+    public static class PreviewResult {
+        public final boolean success;
+        public final String fileType;
+        public final String fileName;
+        public final String content;
+        public final Map<String, Object> metadata;
+
+        PreviewResult(boolean success, String fileType, String fileName, String content, Map<String, Object> metadata) {
+            this.success = success;
+            this.fileType = fileType;
+            this.fileName = fileName;
+            this.content = content;
+            this.metadata = metadata;
+        }
+    }
+
+    public PreviewResult preview(long documentId, String filePath) {
+        log.info("[Preview] 调用 Python 预览: docId={}, path={}", documentId, filePath);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("documentId", documentId);
+        body.put("filePath", filePath);
+
+        try {
+            String rawJson = fastApiClient.post("/preview", body);
+            log.info("[Preview] Python 返回: {}", rawJson);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = objectMapper.readValue(rawJson, Map.class);
+            boolean success = Boolean.TRUE.equals(map.get("success"));
+            String fileType = map.get("fileType") != null ? map.get("fileType").toString() : "";
+            String fileName = map.get("fileName") != null ? map.get("fileName").toString() : "";
+            String content = map.get("content") != null ? map.get("content").toString() : "";
+            @SuppressWarnings("unchecked")
+            Map<String, Object> metadata = map.get("metadata") != null ? (Map<String, Object>) map.get("metadata") : Map.of();
+
+            return new PreviewResult(success, fileType, fileName, content, metadata);
+
+        } catch (Exception e) {
+            log.error("[Preview] Python 调用失败", e);
+            return new PreviewResult(false, "", "", "Python 服务不可用: " + e.getMessage(), Map.of("error", e.getMessage() != null ? e.getMessage() : "unknown"));
         }
     }
 
