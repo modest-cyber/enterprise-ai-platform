@@ -89,8 +89,8 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
-  }
-]
+  },
+  ]
 
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
@@ -230,8 +230,8 @@ export const dynamicRoutes = [
         meta: { title: '工具管理', icon: 'tool' }
       }
     ]
-  }
-]
+  },
+  ]
 
 const router = createRouter({
   history: createWebHistory(),
