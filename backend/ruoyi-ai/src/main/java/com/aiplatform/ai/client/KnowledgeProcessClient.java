@@ -37,12 +37,13 @@ public class KnowledgeProcessClient {
         }
     }
 
+    @lombok.Data
     public static class PreviewResult {
-        public final boolean success;
-        public final String fileType;
-        public final String fileName;
-        public final String content;
-        public final Map<String, Object> metadata;
+        private final boolean success;
+        private final String fileType;
+        private final String fileName;
+        private final String content;
+        private final Map<String, Object> metadata;
 
         PreviewResult(boolean success, String fileType, String fileName, String content, Map<String, Object> metadata) {
             this.success = success;
