@@ -378,6 +378,33 @@ async def chat_stream(
     else:
         system_prompt = _build_agent_system_prompt(agent_config, req.message)
 
+    # === Forge Agent 路由分支 ===
+    # 当 agentType 为 "forge" 时，不走 LLM 直接调用，委托给 forge-agent 执行
+    agent_type = agent_config.get("agentType", "")
+    if agent_type == "forge" and model_config:
+        from app.forge_config import ForgeConfig
+        from app.forge_client import ForgeClient
+
+        forge_config = ForgeConfig.from_platform_config(
+            task=req.message,
+            agent_config=agent_config,
+            model_config=model_config,
+        )
+
+        forge_client = ForgeClient()
+
+        async def forge_event_stream():
+            try:
+                async for sse_event in forge_client.execute_stream(forge_config):
+                    yield sse_event
+            except Exception as e:
+                logger.error("Forge 执行异常: %s", e)
+                err = {"type": "error", "code": 500, "message": f"Forge 执行失败: {e}"}
+                yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(forge_event_stream(), media_type="text/event-stream")
+    # === Forge 路由分支结束 ===
+
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})

@@ -83,4 +83,7 @@ def create_app() -> FastAPI:
     from api.preview import router as preview_router
     app.include_router(preview_router, prefix="/api/v1")
 
+    from api.forge_routes import router as forge_router
+    app.include_router(forge_router, prefix="/api/v1")
+
     return app
