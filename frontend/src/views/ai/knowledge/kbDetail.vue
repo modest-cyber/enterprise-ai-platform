@@ -100,7 +100,11 @@
             <span class="meta-item" v-if="previewMeta?.loaderType">解析器: {{ previewMeta.loaderType }}</span>
             <span class="meta-item" v-if="previewMeta?.fileSize">大小: {{ formatFileSize(previewMeta.fileSize) }}</span>
           </div>
-          <pre class="preview-text">{{ previewContent }}</pre>
+          <pre v-if="previewContent && previewContent.trim()" class="preview-text">{{ previewContent }}</pre>
+          <div v-else class="preview-empty">
+            <el-icon :size="48"><WarningFilled /></el-icon>
+            <p>该文档无可提取的文字内容</p>
+          </div>
         </div>
       </div>
     </el-dialog>
@@ -137,6 +141,7 @@
 <script setup lang="ts" name="KbDetail">
 import { ref, reactive, computed, watch, getCurrentInstance, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { WarningFilled } from '@element-plus/icons-vue'
 import { getKnowledge, listDocuments, deleteDocument, processDocument, getProcessStatus, getDocumentContent, getDocStats, getDocumentFile, previewDocument, SUPPORTED_FORMATS } from '@/api/ai/knowledge'
 import { getToken } from '@/utils/auth'
 
@@ -394,6 +399,9 @@ watch(() => route.query.kbId, () => {
   .preview-loading { text-align: center; padding: 80px 0; color: var(--el-text-color-secondary, #909399); }
   .preview-iframe { width: 100%; height: 70vh; border: none; }
   .preview-text { white-space: pre-wrap; word-break: break-word; max-height: 70vh; overflow-y: auto; padding: 16px; background: var(--el-fill-color-light, #f5f7fa); border-radius: 4px; font-size: 14px; line-height: 1.6; }
+  .preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--el-text-color-secondary, #909399); gap: 12px; }
+  .preview-empty .el-icon { color: var(--el-text-color-placeholder, #c0c4cc); }
+  .preview-empty p { font-size: 14px; margin: 0; color: var(--el-text-color-secondary, #909399); }
   .preview-markdown { max-height: 70vh; overflow-y: auto; padding: 16px; line-height: 1.8; font-size: 14px; }
 }
 </style>

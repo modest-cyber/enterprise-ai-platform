@@ -1,12 +1,19 @@
-"""DOCX 加载器 — 提取段落、标题、表格、页眉、页脚"""
+"""DOCX 加载器 — 提取段落、标题、表格、页眉、页脚，支持 XML 回退"""
 
 import logging
+import zipfile
 
 logger = logging.getLogger(__name__)
 
+# OOXML 命名空间
+NSMAP = {
+    "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+}
+
 
 class DocxLoader:
-    """读取 .docx 全部文本内容"""
+    """读取 .docx 全部文本内容，多层回退确保最大程度提取"""
 
     @staticmethod
     def supports(extension: str) -> bool:
@@ -16,6 +23,8 @@ class DocxLoader:
         from docx import Document
 
         logger.info("[DocxLoader] 开始解析: %s", file_path)
+
+        # ── 第一层：python-docx 标准解析 ──
         doc = Document(file_path)
         parts = []
 
@@ -50,9 +59,88 @@ class DocxLoader:
             parts.append(footers_text)
 
         text = "\n".join(parts)
-        logger.info("[DocxLoader] 解析完成, 段落数=%d, 表格数=%d, 长度=%d",
-                     len(doc.paragraphs), len(doc.tables), len(text))
+        logger.info("[DocxLoader] 标准解析: 段落数=%d, 表格数=%d, 文本长度=%d",
+                     len(doc.paragraphs), len(doc.tables), len(text.strip()))
+
+        # ── 第二层：如果标准解析结果为空，尝试原始 XML 回退 ──
+        if not text.strip():
+            logger.warning("[DocxLoader] 标准解析无文本内容，尝试 XML 回退提取")
+            xml_text = self._extract_from_raw_xml(file_path)
+            if xml_text.strip():
+                parts = [xml_text]
+                text = xml_text
+                logger.info("[DocxLoader] XML 回退提取成功，文本长度=%d", len(xml_text.strip()))
+
+        # ── 第三层：如果仍然为空，检测是否为纯图片文档 ──
+        if not text.strip():
+            drawing_count = self._count_drawings(file_path)
+            if drawing_count > 0:
+                text = f"[该文档为纯图片文档，包含 {drawing_count} 张图片，无可提取的文字内容]"
+                logger.info("[DocxLoader] 检测到纯图片文档，图片数=%d", drawing_count)
+            else:
+                text = "[该文档无可提取的文字内容]"
+                logger.info("[DocxLoader] 文档无任何可提取内容")
+
+        logger.info("[DocxLoader] 最终解析完成, 总长度=%d", len(text))
         return text
+
+    def _extract_from_raw_xml(self, file_path: str) -> str:
+        """原始 XML 回退：绕过 python-docx API，直接从 document.xml 提取 <w:t> 文本。
+        用于处理 python-docx 无法访问的内容（如结构化文档标签 SDT、文本框等）。"""
+        try:
+            from lxml import etree
+
+            with zipfile.ZipFile(file_path) as zf:
+                if "word/document.xml" not in zf.namelist():
+                    return ""
+                xml_bytes = zf.read("word/document.xml")
+
+            root = etree.fromstring(xml_bytes)
+
+            # 处理 mc:AlternateContent — 选择 Fallback 分支以保证兼容性
+            for ac in root.findall(".//mc:AlternateContent", NSMAP):
+                fallback = ac.find("./mc:Fallback", NSMAP)
+                if fallback is not None:
+                    parent = ac.getparent()
+                    if parent is not None:
+                        idx = list(parent).index(ac)
+                        parent.remove(ac)
+                        for child in fallback:
+                            parent.insert(idx, child)
+                            idx += 1
+
+            texts = []
+            for t_elem in root.findall(".//w:t", NSMAP):
+                if t_elem.text and t_elem.text.strip():
+                    # 检查父元素是否有 xml:space="preserve"
+                    preserve_space = t_elem.get("{http://www.w3.org/XML/1998/namespace}space") == "preserve"
+                    if preserve_space:
+                        texts.append(t_elem.text)
+                    else:
+                        texts.append(t_elem.text.strip())
+
+            return "\n".join(texts)
+
+        except Exception as e:
+            logger.warning("[DocxLoader] XML 回退提取失败: %s", e)
+            return ""
+
+    def _count_drawings(self, file_path: str) -> int:
+        """统计文档中的图片/绘图数量"""
+        try:
+            from lxml import etree
+
+            with zipfile.ZipFile(file_path) as zf:
+                if "word/document.xml" not in zf.namelist():
+                    return 0
+                xml_bytes = zf.read("word/document.xml")
+
+            root = etree.fromstring(xml_bytes)
+            drawings = root.findall(".//w:drawing", NSMAP)
+            return len(drawings)
+
+        except Exception:
+            return 0
 
     def _get_heading_level(self, para) -> int:
         try:
