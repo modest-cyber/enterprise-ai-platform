@@ -157,12 +157,6 @@ public class AiChatServiceImpl implements IAiChatService {
                 agentInfo.setTemperature(agent.getTemperature());
                 agentInfo.setTimeoutSeconds(agent.getTimeoutSeconds());
 
-                // ★ Agent 绑定的模型 ID — 优先使用此模型
-                agentInfo.setModelId(agent.getModelId());
-                if (agent.getModelId() != null) {
-                    resolvedModelId = agent.getModelId();
-                }
-
                 // ★ 加载 Agent 绑定的工具定义
                 if (agent.getToolsJson() != null && !agent.getToolsJson().isBlank()) {
                     try {

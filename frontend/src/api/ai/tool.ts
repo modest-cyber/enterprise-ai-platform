@@ -34,3 +34,15 @@ export function invokeTool(id, params) {
 export function testTool(id) {
   return request({ url: '/ai/tool/test/' + id, method: 'post' })
 }
+
+// ==================== 工具模板 ====================
+
+// 查询所有启用的工具模板
+export function listToolTemplates() {
+  return request({ url: '/ai/tool/template/list', method: 'get' })
+}
+
+// 根据模板标识获取模板详情
+export function getToolTemplate(templateCode: string) {
+  return request({ url: '/ai/tool/template/' + templateCode, method: 'get' })
+}

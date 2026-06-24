@@ -43,9 +43,6 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="Agent名称" align="center" prop="agentName" :show-overflow-tooltip="true" />
       <el-table-column label="Agent类型" align="center" prop="agentType" width="100" />
-      <el-table-column label="关联模型" align="center" width="140">
-          <template #default="scope"><span>{{ getModelName(scope.row.modelId) }}</span></template>
-        </el-table-column>
       <el-table-column label="温度" align="center" prop="temperature" width="80" />
       <el-table-column label="最大迭代" align="center" prop="maxIterations" width="90" />
       <el-table-column label="状态" align="center" prop="status" width="80">
@@ -94,13 +91,6 @@
           <el-input v-model="form.description" type="textarea" placeholder="请输入描述" />
         </el-form-item>
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="关联模型" prop="modelId">
-              <el-select v-model="form.modelId" placeholder="请选择模型" clearable filterable style="width:100%">
-                <el-option v-for="m in modelOptions" :key="m.modelId" :label="m.displayName + ' (' + m.modelName + ')'" :value="m.modelId" />
-              </el-select>
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item label="状态">
               <el-radio-group v-model="form.status">
@@ -201,7 +191,6 @@
 <script setup lang="ts" name="Agent">
 import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
 import { listAgent, getAgent, addAgent, updateAgent, delAgent, executeAgent, submitAgent, getTaskStatus, cancelTask } from '@/api/ai/agent'
-import { listEnabledModels } from '@/api/ai/model'
 import { listTool } from '@/api/ai/tool'
 const { proxy } = getCurrentInstance() as any
 
@@ -214,7 +203,6 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref('')
-const modelOptions = ref<any[]>([])
 const toolOptions = ref<any[]>([])
 
 // 执行相关
@@ -256,18 +244,6 @@ function getToolOptions() {
     toolOptions.value = response.rows || []
   })
 }
-// 获取模型选项列表（仅启用的模型）
-function getModelOptions() {
-  listEnabledModels().then((response: any) => {
-    modelOptions.value = response.data || []
-  })
-}
-// 根据模型ID获取显示名称
-function getModelName(modelId: number) {
-  const m = modelOptions.value.find((item: any) => item.modelId === modelId)
-  return m ? m.displayName : (modelId || '-')
-}
-
 function getList() {
   loading.value = true
   listAgent(queryParams.value).then((response: any) => {
@@ -280,7 +256,7 @@ function cancel() { open.value = false; reset() }
 function reset() {
   form.value = {
     agentId: undefined, agentName: undefined, agentType: undefined, description: undefined,
-    modelId: undefined, systemPrompt: undefined, toolsJson: undefined, toolIds: [], workflowJson: undefined,
+    systemPrompt: undefined, toolsJson: undefined, toolIds: [], workflowJson: undefined,
     maxIterations: 10, temperature: 0.7, timeoutSeconds: 300, status: 1
   }
   proxy.resetForm('agentRef')
@@ -376,6 +352,5 @@ function cancelTaskHandler() {
 }
 
 getList()
-getModelOptions()
 getToolOptions()
 </script>

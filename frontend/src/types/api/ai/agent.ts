@@ -6,7 +6,6 @@ export interface AgentConfig extends BaseEntity {
   agentName: string
   agentType: string
   description: string
-  modelId: number
   systemPrompt: string
   toolsJson: string
   workflowJson: string

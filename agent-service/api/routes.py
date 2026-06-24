@@ -19,7 +19,7 @@ from app.llm.client import LLMClient
 from app.llm.exceptions import LLMException
 
 # ── 文件日志配置（与 Java 后端日志同目录，方便统一查看）──
-_LOG_DIR = os.environ.get("LOG_PATH", "D:/home/ruoyi/logs")
+_LOG_DIR = os.environ.get("LOG_PATH", "enterprise-ai-platform/logs")
 os.makedirs(_LOG_DIR, exist_ok=True)
 _LOG_FILE = os.path.join(_LOG_DIR, "agent-service.log")
 

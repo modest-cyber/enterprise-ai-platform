@@ -45,8 +45,6 @@ public class ChatAgentClient {
             agentMap.put("id", agent.getAgentId());
             agentMap.put("name", agent.getAgentName());
             agentMap.put("systemPrompt", agent.getSystemPrompt() != null ? agent.getSystemPrompt() : "");
-            // ★ Agent 绑定的模型 ID — 聊天时优先使用此模型
-            agentMap.put("modelId", agent.getModelId());
             agentMap.put("toolsJson", agent.getToolsJson());
         }
         body.put("agent", agentMap);

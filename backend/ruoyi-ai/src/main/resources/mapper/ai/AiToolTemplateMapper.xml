@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiplatform.ai.mapper.AiToolTemplateMapper">
+
+    <resultMap type="AiToolTemplate" id="AiToolTemplateResult">
+        <id     property="templateId"      column="template_id"        />
+        <result property="templateCode"    column="template_code"      />
+        <result property="templateName"    column="template_name"      />
+        <result property="category"        column="category"           />
+        <result property="description"     column="description"        />
+        <result property="toolType"        column="tool_type"          />
+        <result property="displayName"     column="display_name"       />
+        <result property="serverUrl"       column="server_url"         />
+        <result property="inputSchema"     column="input_schema"       />
+        <result property="outputSchema"    column="output_schema"      />
+        <result property="authType"        column="auth_type"          />
+        <result property="authConfig"      column="auth_config"        />
+        <result property="status"          column="status"             />
+        <result property="createTime"      column="create_time"        />
+        <result property="updateTime"      column="update_time"        />
+    </resultMap>
+
+    <sql id="selectTemplateVo">
+        select template_id, template_code, template_name, category, description,
+               tool_type, display_name, server_url,
+               input_schema, output_schema, auth_type, auth_config,
+               status, create_time, update_time
+        from ai_tool_template
+    </sql>
+
+    <select id="selectTemplateByCode" parameterType="String" resultMap="AiToolTemplateResult">
+        <include refid="selectTemplateVo"/>
+        where template_code = #{templateCode} and status = 1
+    </select>
+
+    <select id="selectEnabledTemplates" resultMap="AiToolTemplateResult">
+        <include refid="selectTemplateVo"/>
+        where status = 1
+        order by template_id
+    </select>
+
+    <select id="selectTemplatesByCategory" parameterType="String" resultMap="AiToolTemplateResult">
+        <include refid="selectTemplateVo"/>
+        where category = #{category} and status = 1
+        order by template_id
+    </select>
+
+</mapper>

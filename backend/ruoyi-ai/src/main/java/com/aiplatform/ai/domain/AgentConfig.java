@@ -42,9 +42,6 @@ public class AgentConfig extends BaseEntity {
     @Size(max = 500, message = "Agent描述长度不能超过500个字符")
     private String description;
 
-    /** 绑定的模型ID（关联 ai_model.model_id） */
-    private Long modelId;
-
     /** System Prompt模板（支持变量占位符，执行时动态渲染） */
     private String systemPrompt;
 
@@ -75,7 +72,6 @@ public class AgentConfig extends BaseEntity {
             .append("agentName", getAgentName())
             .append("agentType", getAgentType())
             .append("description", getDescription())
-            .append("modelId", getModelId())
             .append("maxIterations", getMaxIterations())
             .append("temperature", getTemperature())
             .append("timeoutSeconds", getTimeoutSeconds())

@@ -68,8 +68,32 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog :title="title" v-model="open" width="700px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="750px" append-to-body destroy-on-close @closed="handleDialogClosed">
       <el-form ref="toolRef" :model="form" :rules="rules" label-width="100px">
+        <!-- 模板选择器（仅新增时显示，编辑时不显示） -->
+        <el-form-item v-if="!form.toolId" label="工具模板">
+          <el-select
+            v-model="selectedTemplate"
+            placeholder="请选择工具模板（可选），选择后自动填充配置"
+            style="width:100%"
+            clearable
+            @change="handleTemplateChange"
+            @clear="handleTemplateClear"
+          >
+            <el-option
+              v-for="tpl in templateOptions"
+              :key="tpl.templateCode"
+              :label="tpl.templateName + ' — ' + tpl.description"
+              :value="tpl.templateCode"
+            >
+              <div class="template-option">
+                <span class="template-name">{{ tpl.templateName }}</span>
+                <span class="template-desc">{{ tpl.description }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="工具标识" prop="toolName">
@@ -108,15 +132,37 @@
         <el-form-item label="服务URL" prop="serverUrl">
           <el-input v-model="form.serverUrl" placeholder="请输入服务URL" />
         </el-form-item>
-        <el-form-item label="输入Schema" prop="inputSchema">
-          <el-input v-model="form.inputSchema" type="textarea" :rows="4" placeholder="JSON Schema格式" />
-        </el-form-item>
-        <el-form-item label="输出Schema" prop="outputSchema">
-          <el-input v-model="form.outputSchema" type="textarea" :rows="3" placeholder="JSON Schema格式" />
-        </el-form-item>
-        <el-form-item label="认证配置" prop="authConfig">
-          <el-input v-model="form.authConfig" type="textarea" :rows="2" placeholder="JSON格式认证配置" />
-        </el-form-item>
+
+        <!-- 高级模式：折叠面板 -->
+        <el-divider content-position="left">
+          <el-button
+            link
+            @click="showAdvanced = !showAdvanced"
+            class="advanced-toggle"
+          >
+            <el-icon><Setting /></el-icon>
+            高级配置
+            <el-icon>
+              <ArrowDown v-if="!showAdvanced" />
+              <ArrowUp v-else />
+            </el-icon>
+          </el-button>
+        </el-divider>
+
+        <el-collapse-transition>
+          <div v-show="showAdvanced">
+            <el-form-item label="输入Schema" prop="inputSchema">
+              <el-input v-model="form.inputSchema" type="textarea" :rows="4" placeholder="JSON Schema格式" />
+            </el-form-item>
+            <el-form-item label="输出Schema" prop="outputSchema">
+              <el-input v-model="form.outputSchema" type="textarea" :rows="3" placeholder="JSON Schema格式" />
+            </el-form-item>
+            <el-form-item label="认证配置" prop="authConfig">
+              <el-input v-model="form.authConfig" type="textarea" :rows="2" placeholder="JSON格式认证配置" />
+            </el-form-item>
+          </div>
+        </el-collapse-transition>
+
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="超时(ms)" prop="timeoutMs">
@@ -167,8 +213,9 @@
 </template>
 
 <script setup lang="ts" name="Tool">
-import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
-import { listTool, getTool, addTool, updateTool, delTool, invokeTool, testTool } from '@/api/ai/tool'
+import { ref, reactive, toRefs, getCurrentInstance, onMounted, nextTick } from 'vue'
+import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue'
+import { listTool, getTool, addTool, updateTool, delTool, invokeTool, testTool, listToolTemplates } from '@/api/ai/tool'
 const { proxy } = getCurrentInstance() as any
 
 const toolList = ref([])
@@ -180,6 +227,11 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref('')
+
+// 模板相关
+const selectedTemplate = ref('')
+const templateOptions = ref<any[]>([])
+const showAdvanced = ref(false)
 
 // 调用测试相关
 const invokeOpen = ref(false)
@@ -230,6 +282,8 @@ function reset() {
     description: undefined, serverUrl: undefined, inputSchema: undefined, outputSchema: undefined,
     authType: 'none', authConfig: undefined, timeoutMs: 30000, retryCount: 0, isEnabled: 1
   }
+  selectedTemplate.value = ''
+  showAdvanced.value = false
   proxy.resetForm('toolRef')
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
@@ -239,10 +293,59 @@ function handleSelectionChange(selection: any[]) {
   single.value = selection.length != 1
   multiple.value = !selection.length
 }
-function handleAdd() { reset(); open.value = true; title.value = '新增工具' }
+function handleAdd() {
+  reset()
+  open.value = true
+  title.value = '新增工具'
+}
 function handleUpdate(row: any) {
   reset()
-  getTool(row.toolId || ids.value[0]).then((response: any) => { form.value = response.data; open.value = true; title.value = '修改工具' })
+  getTool(row.toolId || ids.value[0]).then((response: any) => {
+    form.value = response.data
+    selectedTemplate.value = ''
+    showAdvanced.value = true  // 编辑已有工具时默认展开高级配置
+    open.value = true
+    title.value = '修改工具'
+  })
+}
+
+// ── 模板选择逻辑 ──
+function handleDialogClosed() {
+  // 关闭对话框时重置高级配置默认折叠
+  showAdvanced.value = false
+}
+
+function handleTemplateChange(templateCode: string) {
+  if (!templateCode) return
+  const tpl = templateOptions.value.find((t: any) => t.templateCode === templateCode)
+  if (!tpl) return
+
+  // 自动填充模板默认值（用户可手动覆盖）
+  form.value.displayName = tpl.displayName || form.value.displayName
+  form.value.toolType = tpl.toolType || form.value.toolType
+  form.value.description = tpl.description || form.value.description
+  form.value.serverUrl = tpl.serverUrl || form.value.serverUrl
+  form.value.authType = tpl.authType || form.value.authType
+  form.value.inputSchema = tpl.inputSchema || ''
+  form.value.outputSchema = tpl.outputSchema || ''
+  form.value.authConfig = tpl.authConfig || ''
+
+  if (tpl.inputSchema || tpl.outputSchema || tpl.authConfig) {
+    showAdvanced.value = true
+  }
+
+  proxy.$modal.msgSuccess('已加载模板: ' + tpl.templateName)
+}
+
+function handleTemplateClear() {
+  // 不清除已有的手动输入，仅重置模板关联
+}
+
+// ── 获取模板列表 ──
+function fetchTemplateOptions() {
+  listToolTemplates().then((response: any) => {
+    templateOptions.value = response.data || []
+  })
 }
 function submitForm() {
   proxy.$refs['toolRef'].validate((valid: boolean) => {
@@ -303,5 +406,37 @@ function handleTest(row: any) {
   })
 }
 
-getList()
+onMounted(() => {
+  getList()
+  fetchTemplateOptions()
+})
 </script>
+
+<style scoped lang="scss">
+.template-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  .template-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--el-text-color-primary, #303133);
+  }
+  .template-desc {
+    font-size: 12px;
+    color: var(--el-text-color-secondary, #909399);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+.advanced-toggle {
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-text-color-secondary, #909399);
+  &:hover { color: var(--el-color-primary, #409eff); }
+}
+</style>
