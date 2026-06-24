@@ -1,7 +1,6 @@
-"""知识库索引 API — 真实文档处理 + 索引"""
+"""知识库索引 API — 使用 DocumentLoaderFactory 统一解析"""
 
 import logging
-import uuid
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -30,29 +29,8 @@ class ProcessResponse(BaseModel):
 
 
 def _extract_text(file_path: str) -> str:
-    path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"文件不存在: {file_path}")
-
-    suffix = path.suffix.lower()
-    logger.info("[RAG] 开始读取文件: %s (格式=%s)", file_path, suffix)
-
-    if suffix in (".txt", ".md"):
-        text = path.read_text(encoding="utf-8")
-    elif suffix == ".pdf":
-        import pdfplumber
-        with pdfplumber.open(str(path)) as pdf:
-            pages = [page.extract_text() or "" for page in pdf.pages]
-            text = "\n".join(pages)
-    elif suffix == ".docx":
-        from docx import Document
-        doc = Document(str(path))
-        text = "\n".join(p.text for p in doc.paragraphs)
-    else:
-        raise ValueError(f"不支持的文件格式: {suffix}")
-
-    logger.info("[RAG] 文本提取完成, 长度=%d", len(text))
-    return text
+    from app.loaders import DocumentLoaderFactory
+    return DocumentLoaderFactory.load(file_path)
 
 
 @router.post("/process", response_model=ProcessResponse)
@@ -69,8 +47,8 @@ async def process_document(req: ProcessRequest):
             content=text,
         )
 
-        logger.info("[RAG] 处理完成: docId=%d, chunkCount=%d, vectorCount=%d",
-                    req.documentId, result["chunk_count"], result["chunk_count"])
+        logger.info("[RAG] 处理完成: docId=%d, chunkCount=%d",
+                    req.documentId, result["chunk_count"])
 
         return ProcessResponse(
             success=True,
@@ -109,3 +87,12 @@ async def delete_document(kb_id: int, doc_id: int):
 async def get_stats():
     stats = index_service.get_stats()
     return StatsResponse(**stats)
+
+
+@router.get("/formats")
+async def supported_formats():
+    from app.loaders import DocumentLoaderFactory
+    return {
+        "supported": DocumentLoaderFactory.get_supported_extensions(),
+        "count": len(DocumentLoaderFactory.get_supported_extensions()),
+    }

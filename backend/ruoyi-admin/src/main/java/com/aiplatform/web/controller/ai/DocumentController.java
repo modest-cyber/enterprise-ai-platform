@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.aiplatform.ai.client.KnowledgeProcessClient;
 import com.aiplatform.ai.domain.KbDocument;
 import com.aiplatform.ai.domain.vo.DocumentProcessVo;
 import com.aiplatform.ai.service.IDocumentService;
@@ -32,6 +33,22 @@ public class DocumentController extends BaseController {
 
     @Autowired
     private IDocumentService documentService;
+
+    @Autowired
+    private KnowledgeProcessClient knowledgeProcessClient;
+
+    /** 统一文档预览 — 调用 Python 服务获取解析后的内容和元数据 */
+    @PreAuthorize("@ss.hasPermi('ai:kb:query')")
+    @PostMapping("/preview/{documentId}")
+    public AjaxResult preview(@PathVariable Long documentId) {
+        KbDocument doc = documentService.getDocument(documentId);
+        if (doc == null) throw new ServiceException("文档不存在: " + documentId);
+
+        String filePath = documentService.getDocumentFilePath(documentId);
+        KnowledgeProcessClient.PreviewResult result = knowledgeProcessClient.preview(documentId, filePath);
+
+        return success(result);
+    }
 
     /** 触发文档向量化处理 */
     @PreAuthorize("@ss.hasPermi('ai:kb:upload')")

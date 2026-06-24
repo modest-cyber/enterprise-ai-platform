@@ -31,7 +31,7 @@ import org.apache.tika.Tika;
 @Service
 public class DocumentServiceImpl implements IDocumentService {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("txt", "pdf", "md", "docx", "xlsx", "html");
+    private static final Set<String> ALLOWED_TYPES = Set.of("txt", "pdf", "md", "docx", "doc", "xlsx", "xls", "pptx", "ppt", "html", "csv");
 
     /** 服务器本地存储根目录 */
     private static final String KB_UPLOAD_ROOT = "upload/ai/kb/";
@@ -133,7 +133,13 @@ public class DocumentServiceImpl implements IDocumentService {
 
     private String extractText(String fileType, String filePath) throws IOException, TikaException {
         return switch (fileType) {
-            case "txt", "md" -> Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
+            case "txt", "md", "csv" -> {
+                try {
+                    yield Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
+                } catch (java.nio.charset.MalformedInputException e) {
+                    yield new String(Files.readAllBytes(Paths.get(filePath)), "GBK");
+                }
+            }
             case "pdf" -> extractPdf(filePath);
             case "docx" -> extractDocx(filePath);
             default -> new Tika().parseToString(new File(filePath));

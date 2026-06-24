@@ -35,9 +35,11 @@ class HealthChecker:
         for mod_name in [
             "sentence_transformers",
             "pymilvus",
-            "pdfplumber",
-            "docx",
             "fitz",
+            "docx",
+            "openpyxl",
+            "pptx",
+            "chardet",
             "openai",
             "httpx",
             "jsonschema",

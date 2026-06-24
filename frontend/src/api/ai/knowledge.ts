@@ -42,15 +42,23 @@ export function getDocumentFile(docId: number) {
   })
 }
 
+export function previewDocument(docId: number) {
+  return request({ url: '/ai/document/preview/' + docId, method: 'post' })
+}
+
+export function getDocumentContent(docId) {
+  return request({ url: '/ai/document/' + docId + '/content', method: 'get' })
+}
+
+// ==================== 支持格式 ====================
+export const SUPPORTED_FORMATS = ['pdf', 'docx', 'doc', 'txt', 'md', 'xlsx', 'xls', 'pptx', 'ppt', 'csv']
+
 // ==================== 文档处理 ====================
 export function processDocument(docId) {
   return request({ url: '/ai/document/process/' + docId, method: 'post' })
 }
 export function getProcessStatus(docId) {
   return request({ url: '/ai/document/process/' + docId, method: 'get' })
-}
-export function getDocumentContent(docId) {
-  return request({ url: '/ai/document/' + docId + '/content', method: 'get' })
 }
 export function getDocStats(kbId) {
   return request({ url: '/ai/document/stats/' + kbId, method: 'get' })
