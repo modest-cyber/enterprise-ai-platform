@@ -33,4 +33,7 @@ public class ChatRequestDto implements Serializable {
     /** 模型ID */
     private Long modelId;
 
+    /** 知识库ID（非空时启用RAG检索） */
+    private Long knowledgeId;
+
 }

@@ -140,6 +140,7 @@ public class AiChatServiceImpl implements IAiChatService {
         dto.setConversationId(conversation.getConversationId());
         dto.setTitle(conversation.getTitle());
         dto.setUserId(conversation.getUserId());
+        dto.setKnowledgeId(conversation.getKnowledgeId());
 
         // Agent 配置 — agentId 是聊天主入口
         AgentConfig agent = null;
@@ -221,7 +222,7 @@ public class AiChatServiceImpl implements IAiChatService {
 
     @Override
     public ConversationConfigDto createConversationFromInternal(Long userId, String title,
-                                                                 Long agentId, Long modelId) {
+                                                                 Long agentId, Long modelId, Long knowledgeId) {
         Date now = DateUtils.getNowDate();
 
         AiConversation conversation = new AiConversation();
@@ -229,6 +230,7 @@ public class AiChatServiceImpl implements IAiChatService {
         conversation.setTitle(title != null ? title : "新会话");
         conversation.setAgentId(agentId);
         conversation.setModelId(modelId);
+        conversation.setKnowledgeId(knowledgeId);
         conversation.setStatus(1);
         conversation.setCreateTime(now);
         conversation.setUpdateTime(now);
@@ -321,6 +323,7 @@ public class AiChatServiceImpl implements IAiChatService {
             conversation.setTitle(title);
             conversation.setAgentId(resolvedAgentId);
             conversation.setModelId(resolvedModelId);
+            conversation.setKnowledgeId(dto.getKnowledgeId());
             conversation.setStatus(1);
             conversation.setCreateTime(now);
             conversation.setUpdateTime(now);

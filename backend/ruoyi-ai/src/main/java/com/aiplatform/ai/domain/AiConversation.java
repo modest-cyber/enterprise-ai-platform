@@ -44,6 +44,9 @@ public class AiConversation extends BaseEntity {
     /** 绑定的模型 ID */
     private Long modelId;
 
+    /** 绑定的知识库 ID */
+    private Long knowledgeId;
+
     /** 状态：1-进行中，0-已归档 */
     private Integer status;
 
@@ -56,6 +59,7 @@ public class AiConversation extends BaseEntity {
             .append("agentType", getAgentType())
             .append("agentId", getAgentId())
             .append("modelId", getModelId())
+            .append("knowledgeId", getKnowledgeId())
             .append("status", getStatus())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())

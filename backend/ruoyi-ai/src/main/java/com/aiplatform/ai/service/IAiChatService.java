@@ -53,7 +53,7 @@ public interface IAiChatService {
      * 用于新会话场景：FastAPI 收到 conversationId=null 时，先创建会话再聊天
      */
     ConversationConfigDto createConversationFromInternal(Long userId, String title,
-                                                          Long agentId, Long modelId);
+                                                          Long agentId, Long modelId, Long knowledgeId);
 
     /**
      * 保存消息（供 FastAPI 内部接口调用）

@@ -91,6 +91,26 @@ class InternalClient:
         logger.info("已创建新会话: conversationId=%s", data.get("data", {}).get("conversationId"))
         return data.get("data", {})
 
+    async def get_documents_batch(self, doc_ids: list[int]) -> list[dict]:
+        """批量获取文档信息（用于RAG来源展示）"""
+        token = await self._ensure_token()
+        ids_str = ",".join(str(d) for d in doc_ids)
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self.base_url}/ai/internal/documents?ids={ids_str}",
+                headers={"X-Internal-Token": token},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            await resp.aread()
+            data = resp.json()
+
+        if data.get("code") != 200:
+            raise RuntimeError(f"获取文档信息失败: {data}")
+
+        return data.get("data", [])
+
     async def save_message(self, body: dict) -> None:
         """保存消息（用户消息 + AI 回复）"""
         token = await self._ensure_token()

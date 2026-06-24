@@ -10,6 +10,7 @@ import com.aiplatform.ai.domain.vo.DocumentProcessVo;
  *
  * @author aiplatform
  */
+
 public interface IDocumentService {
 
     KbDocument uploadDocument(KnowledgeUploadDto dto);

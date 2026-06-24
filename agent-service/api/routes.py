@@ -65,6 +65,7 @@ class ChatStreamRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000, description="用户输入消息")
     agentId: Optional[int] = Field(default=None, description="Agent ID")
     modelId: Optional[int] = Field(default=None, description="模型 ID")
+    knowledgeId: Optional[int] = Field(default=None, description="知识库 ID，非空时启用 RAG 检索")
 
 
 class RagRequest(BaseModel):
@@ -317,6 +318,7 @@ async def chat_stream(
                 "title": title,
                 "agentId": req.agentId,
                 "modelId": req.modelId,
+                "knowledgeId": req.knowledgeId,
             }
             config = await internal_client.create_conversation(create_body)
             conversation_id = config.get("conversationId")
@@ -325,6 +327,9 @@ async def chat_stream(
             history = config.get("history", [])
             agent_config = config.get("agent") or {}
             model_config = config.get("model") or {}
+            # 如果请求未指定 knowledgeId 但会话已绑定，从 config 恢复
+            if not req.knowledgeId and config.get("knowledgeId"):
+                req.knowledgeId = config.get("knowledgeId")
     except Exception as e:
         logger.error("获取/创建会话配置失败: %s", e)
         async def config_error_stream():
@@ -332,8 +337,47 @@ async def chat_stream(
             yield f"event: error\ndata: {json.dumps(err, ensure_ascii=False)}\n\n"
         return StreamingResponse(config_error_stream(), media_type="text/event-stream")
 
-    # 3. 构建增强 System Prompt（系统提示词 + 工具定义 + 知识库上下文）
-    system_prompt = _build_agent_system_prompt(agent_config, req.message)
+    # 3. RAG 检索与 System Prompt 构建
+    rag_context = ""
+    rag_sources = []
+    if req.knowledgeId:
+        try:
+            rag_result = _rag_search(req.knowledgeId, req.message, top_k=5)
+            chunks = rag_result["chunks"]
+            if chunks:
+                context_parts = []
+                for i, chunk in enumerate(chunks, 1):
+                    context_parts.append(f"[片段{i}] {chunk['content']}")
+                rag_context = "\n\n".join(context_parts)
+
+                # 查找文档文件名（调用 Spring Boot 内部接口）
+                doc_ids = rag_result["doc_ids"]
+                if doc_ids:
+                    try:
+                        doc_infos = await internal_client.get_documents_batch(doc_ids)
+                        doc_map = {d["docId"]: d["fileName"] for d in doc_infos}
+                    except Exception:
+                        doc_map = {}
+                    for chunk in chunks:
+                        rag_sources.append({
+                            "fileName": doc_map.get(chunk["doc_id"], f"doc_{chunk['doc_id']}"),
+                            "score": chunk["score"]
+                        })
+            logger.info("RAG 检索完成: kb=%s, chunks=%d, sources=%d",
+                        req.knowledgeId, len(chunks), len(rag_sources))
+        except Exception as e:
+            logger.error("RAG 检索失败: %s", e)
+
+    if rag_context:
+        system_prompt = (
+            "你是企业知识库助手。请优先依据提供的知识内容回答。\n"
+            "如果知识内容中不存在答案，请明确说明：'当前知识库中未检索到相关内容'。\n"
+            "禁止编造事实。\n\n"
+            f"## 知识库参考内容\n\n{rag_context}"
+        )
+    else:
+        system_prompt = _build_agent_system_prompt(agent_config, req.message)
+
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -393,7 +437,7 @@ async def chat_stream(
                 except Exception as e:
                     logger.error("保存消息失败（聊天不受影响）: %s", e)
 
-            done_event = {"type": "done", "content": full_reply}
+            done_event = {"type": "done", "content": full_reply, "sources": rag_sources}
             yield f"event: done\ndata: {json.dumps(done_event, ensure_ascii=False)}\n\n"
 
         except LLMException as e:
@@ -470,6 +514,48 @@ async def embed(req: EmbedRequest):
 
 
 # ── Mock 兜底 ──
+
+def _rag_search(knowledge_id: int, query: str, top_k: int = 5) -> dict:
+    """
+    RAG 检索流程：
+    1. Embedding 用户问题
+    2. Milvus 向量检索（过滤 kb_id）
+    3. 返回 top_k 知识片段 + 来源信息
+    """
+    from app.rag.embedding_service import EmbeddingService
+    from app.rag.milvus_service import MilvusService
+
+    embedding_service = EmbeddingService()
+    milvus_service = MilvusService()
+
+    # Step 1: Embedding
+    vector = embedding_service.embed_single(query)
+
+    # Step 2: Milvus 检索
+    expr = f"kb_id == {knowledge_id}"
+    results = milvus_service.search(vector, top_k=top_k, expr=expr)
+
+    # Step 3: 提取 chunks 和 doc_ids
+    chunks = []
+    doc_ids = set()
+    for hit in results:
+        entity = hit.get("entity", hit)
+        content = entity.get("content", "")
+        doc_id = entity.get("doc_id")
+        score = hit.get("distance", hit.get("score", 0))
+        chunks.append({
+            "content": content,
+            "doc_id": doc_id,
+            "score": round(float(score), 4)
+        })
+        if doc_id:
+            doc_ids.add(doc_id)
+
+    return {
+        "chunks": chunks,
+        "doc_ids": list(doc_ids)
+    }
+
 
 def _mock_reply(message: str) -> str:
     return f"[Mock LLM] 收到您的消息：「{message}」。这是模拟回复，实际部署时将调用真实大模型。"

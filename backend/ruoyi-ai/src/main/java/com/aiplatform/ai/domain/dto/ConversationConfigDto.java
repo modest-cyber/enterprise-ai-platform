@@ -17,6 +17,7 @@ public class ConversationConfigDto {
     private Long conversationId;
     private String title;
     private Long userId;
+    private Long knowledgeId;
     private AgentInfo agent;
     private ModelInfo model;
     private List<HistoryMessage> history;

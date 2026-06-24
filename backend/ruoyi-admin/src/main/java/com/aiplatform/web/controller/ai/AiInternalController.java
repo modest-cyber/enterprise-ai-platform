@@ -1,6 +1,8 @@
 package com.aiplatform.web.controller.ai;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,11 +11,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aiplatform.ai.domain.KbDocument;
 import com.aiplatform.ai.domain.dto.ConversationConfigDto;
 import com.aiplatform.ai.domain.dto.MessageSaveRequestDto;
 import com.aiplatform.ai.service.IAiChatService;
+import com.aiplatform.ai.service.IDocumentService;
 import com.aiplatform.common.core.controller.BaseController;
 import com.aiplatform.common.core.domain.AjaxResult;
 import com.aiplatform.framework.web.service.InternalTokenService;
@@ -36,6 +41,9 @@ public class AiInternalController extends BaseController {
 
     @Autowired
     private IAiChatService chatService;
+
+    @Autowired
+    private IDocumentService documentService;
 
     /**
      * 获取内部 JWT
@@ -70,8 +78,30 @@ public class AiInternalController extends BaseController {
         String title = body.get("title") != null ? body.get("title").toString() : "新会话";
         Long agentId = body.get("agentId") != null ? Long.valueOf(body.get("agentId").toString()) : null;
         Long modelId = body.get("modelId") != null ? Long.valueOf(body.get("modelId").toString()) : null;
-        ConversationConfigDto config = chatService.createConversationFromInternal(userId, title, agentId, modelId);
+        Long knowledgeId = body.get("knowledgeId") != null ? Long.valueOf(body.get("knowledgeId").toString()) : null;
+        ConversationConfigDto config = chatService.createConversationFromInternal(userId, title, agentId, modelId, knowledgeId);
         return AjaxResult.success(config);
+    }
+
+    /**
+     * 批量获取文档信息（供 FastAPI RAG 来源展示调用）
+     * 认证方式：X-Internal-Token（由 InternalTokenFilter 验证）
+     */
+    @GetMapping("/documents")
+    public AjaxResult getDocumentsBatch(@RequestParam String ids) {
+        String[] idArr = ids.split(",");
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String idStr : idArr) {
+            Long docId = Long.valueOf(idStr.trim());
+            KbDocument doc = documentService.getDocument(docId);
+            if (doc != null) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("docId", doc.getDocId());
+                item.put("fileName", doc.getFileName());
+                result.add(item);
+            }
+        }
+        return AjaxResult.success(result);
     }
 
     /**

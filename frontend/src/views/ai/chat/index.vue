@@ -34,7 +34,8 @@
               />
             </div>
             <div class="conversation-meta">
-              <el-tag size="small" type="info">{{ item.agentType || '默认' }}</el-tag>
+              <el-tag v-if="item.knowledgeId" size="small" type="success">知识库</el-tag>
+              <el-tag v-else size="small" type="info">通用</el-tag>
               <span class="conversation-time">{{ parseTime(item.updateTime || item.createTime) }}</span>
             </div>
           </div>
@@ -93,8 +94,17 @@
             :key="msg.messageId || msg.id"
             :class="['message-row', msg.role === 'user' ? 'row-user' : 'row-ai']"
           >
-            <div class="message-bubble" :class="msg.role === 'user' ? 'bubble-user' : 'bubble-ai'">
-              <div class="bubble-text" v-html="formatMessage(msg.content)"></div>
+            <div class="message-wrapper" :class="msg.role === 'user' ? 'wrapper-user' : 'wrapper-ai'">
+              <div class="message-bubble" :class="msg.role === 'user' ? 'bubble-user' : 'bubble-ai'">
+                <div class="bubble-text" v-html="formatMessage(msg.content)"></div>
+              </div>
+              <div v-if="msg.sources && msg.sources.length > 0" class="sources-section">
+                <div class="sources-label">来源：</div>
+                <div v-for="(src, idx) in msg.sources" :key="idx" class="source-item">
+                  <span class="source-name">{{ src.fileName }}</span>
+                  <span class="source-score">相似度：{{ src.score }}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div ref="messagesEnd" />
@@ -123,12 +133,13 @@
                   :value="m.modelId"
                 />
               </el-select>
-              <el-select v-model="agentId" placeholder="Agent类型" size="small" class="input-select" clearable>
+              <el-select v-model="knowledgeId" placeholder="知识库" size="small" class="input-select" clearable>
+                <el-option label="不使用知识库" :value="null" />
                 <el-option
-                  v-for="a in agentOptions"
-                  :key="a.agentId"
-                  :label="a.agentName"
-                  :value="a.agentId"
+                  v-for="k in knowledgeOptions"
+                  :key="k.kbId"
+                  :label="k.name"
+                  :value="k.kbId"
                 />
               </el-select>
             </div>
@@ -154,7 +165,7 @@ import { ChatDotRound, Plus, Promotion } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/ruoyi'
 import { getToken } from '@/utils/auth'
 import { listConversation, createConversation, deleteConversation, renameConversation, generateTitle, listMessages } from '@/api/ai/chat'
-import { listEnabledAgents } from '@/api/ai/agent'
+import { listKnowledge } from '@/api/ai/knowledge'
 import { listEnabledModels } from '@/api/ai/model'
 
 const conversationList = ref<any[]>([])
@@ -163,8 +174,8 @@ const messages = ref<any[]>([])
 const inputMessage = ref('')
 const modelId = ref<number | null>(null)
 const modelOptions = ref<any[]>([])
-const agentId = ref<number | null>(null)
-const agentOptions = ref<any[]>([])
+const knowledgeId = ref<number | null>(null)
+const knowledgeOptions = ref<any[]>([])
 const sending = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const messagesEnd = ref<HTMLElement | null>(null)
@@ -202,6 +213,7 @@ function handleNewSession() {
 // ── 选择会话 ──
 function handleSelectConversation(item: any) {
   currentConversationId.value = item.conversationId
+  knowledgeId.value = item.knowledgeId || null
   loadMessages(item.conversationId)
 }
 
@@ -248,7 +260,7 @@ async function handleSend() {
   if (!currentConversationId.value) {
     try {
       const createBody: any = { title: message.substring(0, 30) }
-      if (agentId.value) createBody.agentId = agentId.value
+      if (knowledgeId.value) createBody.knowledgeId = knowledgeId.value
       if (modelId.value) createBody.modelId = modelId.value
       const createRes = await createConversation(createBody)
       // 优先用返回值（修复后 data 是自增 ID），兜底查列表
@@ -279,8 +291,8 @@ async function handleSend() {
   const dto: any = {
     message,
     conversationId: currentConversationId.value,
-    agentId: agentId.value || null,
-    modelId: modelId.value || null
+    modelId: modelId.value || null,
+    knowledgeId: knowledgeId.value || null
   }
 
   try {
@@ -328,6 +340,9 @@ async function handleSend() {
             } else if (data.type === 'done') {
               if (data.content && !aiMsg.content) {
                 aiMsg.content = data.content
+              }
+              if (data.sources) {
+                aiMsg.sources = data.sources
               }
             } else if (data.type === 'error') {
               ElMessage.error(data.message || '聊天出错')
@@ -465,9 +480,9 @@ function formatMessage(content: string): string {
 }
 
 // ── 下拉选项 ──
-function fetchAgentOptions() {
-  listEnabledAgents().then((response: any) => {
-    agentOptions.value = response.data || []
+function fetchKnowledgeOptions() {
+  listKnowledge({ status: 1, pageSize: 100 }).then((response: any) => {
+    knowledgeOptions.value = response.rows || []
   })
 }
 
@@ -479,7 +494,7 @@ function fetchModelOptions() {
 
 onMounted(() => {
   fetchConversationList()
-  fetchAgentOptions()
+  fetchKnowledgeOptions()
   fetchModelOptions()
 })
 </script>
@@ -754,6 +769,53 @@ $max-msg-width: 800px;
 
 .bubble-text {
   white-space: pre-wrap;
+}
+
+// ── 来源展示 ──
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapper-user {
+  align-items: flex-end;
+}
+
+.wrapper-ai {
+  align-items: flex-start;
+}
+
+.sources-section {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  max-width: 80%;
+}
+
+.sources-label {
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.source-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  color: #475569;
+}
+
+.source-name {
+  font-weight: 500;
+}
+
+.source-score {
+  color: #94a3b8;
+  margin-left: 12px;
 }
 
 // ── 输入区域 ──
